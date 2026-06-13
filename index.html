@@ -49,14 +49,14 @@
         <div id="turn-indicator" style="font-size: 15px; font-weight: bold; margin: 5px; padding: 5px; border-radius: 5px;">接続待ち...</div>
         
         <div class="player-hp-box" id="hp-box-B">
-            <strong>相手のHP: <span id="hp-b">10000</span> (手札: <span id="enemy-card-count">0</span>枚)</strong>
+            <strong>相手のHP: <span id="hp-b">5000</span> (手札: <span id="enemy-card-count">0</span>枚)</strong>
         </div>
         <div id="guidance-message" style="color: #6f42c1; font-weight: bold; margin: 5px 0; min-height: 18px;"></div>
         <div class="field" id="field"></div>
         <h3>あなたの手札（クリックで召喚・発動）</h3>
         <div class="hand" id="hand"></div>
         <div class="player-hp-box" id="hp-box-A">
-            <strong>あなたのHP: <span id="hp-a">10000</span></strong>
+            <strong>あなたのHP: <span id="hp-a">5000</span></strong>
         </div>
         <br>
         <button class="action-btn" onclick="triggerNextTurn()">ターン終了</button>
@@ -219,7 +219,7 @@
             return enemyField.some(c => c.id === 6);
         }
 
-        let hpA = 10000; let hpB = 10000;
+        let hpA = 5000; let hpB = 5000;
         let currentTurn = 'A';
         let handA = []; let handB = [];
         let deckA = []; let deckB = [];
@@ -231,7 +231,7 @@
         let philosophySpace = [];
 
         function initGame() {
-            hpA = 10000; hpB = 10000; currentTurn = 'A';
+            hpA = 5000; hpB = 5000; currentTurn = 'A';
             deckA = getShuffledDeck(); deckB = getShuffledDeck();
             handA = []; handB = []; fieldA = []; fieldB = [];
             hasSummonedTeacherThisTurn = false; hasCastSpellThisTurn = false;
@@ -248,7 +248,7 @@
             }
         }
 
-        function updateScreen() {
+function updateScreen() {
             if (amIHost) {
                 document.getElementById('hp-a').innerText = hpA;
                 document.getElementById('hp-b').innerText = hpB;
@@ -277,7 +277,8 @@
                 fieldA.forEach((card, idx) => fADiv.appendChild(createFieldCardElement(card, 'A', idx)));
             } else {
                 fieldA.forEach((card, idx) => fBDiv.appendChild(createFieldCardElement(card, 'A', idx)));
-                fieldB.forEach((card, idx) => fBDiv.appendChild(createFieldCardElement(card, 'B', idx)));
+                // ★ここを fADiv（下の段）に修正しました！
+                fieldB.forEach((card, idx) => fADiv.appendChild(createFieldCardElement(card, 'B', idx)));
             }
             fieldDiv.appendChild(fBDiv); fieldDiv.appendChild(fADiv);
 
