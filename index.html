@@ -5,31 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>先生カードゲーム - オンライン対戦版</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-    <style>
-        body { font-family: sans-serif; text-align: center; background: #f0f0f0; margin: 0; padding: 5px; user-select: none; font-size: 13px; }
+<style>
+        /* 全体の設定（横揺れ防止を追加） */
+        body { font-family: sans-serif; text-align: center; background: #f0f0f0; margin: 0; padding: 5px; user-select: none; font-size: 13px; overflow-x: hidden; }
         h1 { font-size: 18px; margin: 5px 0; }
         h3 { font-size: 13px; margin: 5px 0; }
-        .player-hp-box { background: white; padding: 5px 12px; border-radius: 6px; display: inline-block; margin: 3px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 3px solid transparent; transition: all 0.2s; font-weight: bold; }
+        
+        /* プレイヤーHP */
+        .player-hp-box { background: white; padding: 5px 12px; border-radius: 6px; display: inline-block; margin: 3px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 3px solid transparent; transition: all 0.2s; font-weight: bold; font-size: 13px; }
+        
+        /* フィールド（★ スマホ向けに「折り返し」を追加） */
         .field { min-height: 160px; border: 2px dashed #999; margin: 6px auto; width: 95%; max-width: 600px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #fff; border-radius: 8px; padding: 6px; box-sizing: border-box; }
-        .hand { display: flex; justify-content: center; gap: 8px; margin-top: 5px; min-height: 80px; }
-        .card { width: 125px; height: 75px; background: skyblue; border: 2px solid #007bff; border-radius: 6px; display: flex; flex-direction: column; justify-content: space-between; padding: 4px; box-sizing: border-box; font-size: 9px; font-weight: bold; cursor: pointer; position: relative; transition: height 0.2s, box-shadow 0.2s; z-index: 1; }
-        .card:hover { height: 135px; background: #66b2ff; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .field > div { flex-wrap: wrap; justify-content: center; width: 100%; }
+        
+        /* 手札（★ スマホ向けに「折り返し」を追加） */
+        .hand { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 5px; min-height: 70px; width: 100%; padding-bottom: 5px; }
+        
+        /* カードのサイズ（★ スマホに綺麗に3枚〜2枚で収まるように微調整） */
+        .card { width: 110px; height: 65px; background: skyblue; border: 2px solid #007bff; border-radius: 6px; display: flex; flex-direction: column; justify-content: space-between; padding: 4px; box-sizing: border-box; font-size: 9px; font-weight: bold; cursor: pointer; position: relative; transition: height 0.2s, box-shadow 0.2s; z-index: 1; margin-bottom: 2px; }
+        .card:hover { height: 120px; background: #66b2ff; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #007bff; padding-bottom: 2px; }
-        .card .card-name { font-size: 11px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 75px; }
-        .card .card-stats { display: flex; gap: 3px; font-size: 9px; background: rgba(255,255,255,0.6); padding: 1px 3px; border-radius: 3px; }
+        .card .card-name { font-size: 10.5px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 60px; }
+        .card .card-stats { display: flex; gap: 2px; font-size: 8px; background: rgba(255,255,255,0.6); padding: 1px 3px; border-radius: 3px; }
         .card .card-atk { color: #d9534f; }
         .card .card-dfn { color: #0275d8; }
         .card .card-ability { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 8px; color: #222; padding-top: 2px; line-height: 1.1; overflow: hidden; }
         .card .card-effect-detail { display: none; font-size: 7.5px; color: #333; background: #fff; border-radius: 3px; padding: 2px; margin-top: 3px; font-weight: normal; text-align: left; line-height: 1.2; }
         .card:hover .card-effect-detail { display: block; }
+        
+        /* 選択時のエフェクト */
         .card.selected-attacker { border: 3px solid #28a745 !important; box-shadow: 0 0 10px #28a745; animation: blink 1.2s infinite alternate; }
         .card.selected-usui-target { border: 3px solid #6f42c1 !important; box-shadow: 0 0 10px #6f42c1; animation: blink 0.8s infinite alternate; }
         @keyframes blink { 0% { opacity: 0.7; } 100% { opacity: 1; } }
         button.action-btn { padding: 6px 16px; font-size: 13px; margin-top: 5px; cursor: pointer; }
         
-        /* 接続画面のスタイル */
-        #setup-screen { background: white; padding: 15px; border-radius: 10px; max-width: 400px; margin: 50px auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .setup-btn { background: #007bff; color: white; border: none; padding: 8px 15px; font-size: 14px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        /* 接続画面のスタイル（★ はみ出さないように 90% に修正） */
+        #setup-screen { background: white; padding: 15px; border-radius: 10px; max-width: 400px; width: 90%; margin: 50px auto; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .setup-btn { background: #007bff; color: white; border: none; padding: 10px 15px; font-size: 14px; border-radius: 4px; cursor: pointer; margin: 5px; width: 90%; max-width: 250px; }
         .setup-btn:hover { opacity: 0.8; }
     </style>
 </head>
