@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>先生カードゲーム - オンライン対戦版</title>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #f0f0f0; margin: 0; padding: 5px; user-select: none; font-size: 13px; }
+        h1 { font-size: 18px; margin: 5px 0; }
+        h3 { font-size: 13px; margin: 5px 0; }
+        .player-hp-box { background: white; padding: 5px 12px; border-radius: 6px; display: inline-block; margin: 3px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 3px solid transparent; transition: all 0.2s; font-weight: bold; }
+        .field { min-height: 160px; border: 2px dashed #999; margin: 6px auto; width: 95%; max-width: 600px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #fff; border-radius: 8px; padding: 6px; box-sizing: border-box; }
+        .hand { display: flex; justify-content: center; gap: 8px; margin-top: 5px; min-height: 80px; }
+        .card { width: 125px; height: 75px; background: skyblue; border: 2px solid #007bff; border-radius: 6px; display: flex; flex-direction: column; justify-content: space-between; padding: 4px; box-sizing: border-box; font-size: 9px; font-weight: bold; cursor: pointer; position: relative; transition: height 0.2s, box-shadow 0.2s; z-index: 1; }
+        .card:hover { height: 135px; background: #66b2ff; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #007bff; padding-bottom: 2px; }
+        .card .card-name { font-size: 11px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 75px; }
+        .card .card-stats { display: flex; gap: 3px; font-size: 9px; background: rgba(255,255,255,0.6); padding: 1px 3px; border-radius: 3px; }
+        .card .card-atk { color: #d9534f; }
+        .card .card-dfn { color: #0275d8; }
+        .card .card-ability { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 8px; color: #222; padding-top: 2px; line-height: 1.1; overflow: hidden; }
+        .card .card-effect-detail { display: none; font-size: 7.5px; color: #333; background: #fff; border-radius: 3px; padding: 2px; margin-top: 3px; font-weight: normal; text-align: left; line-height: 1.2; }
+        .card:hover .card-effect-detail { display: block; }
+        .card.selected-attacker { border: 3px solid #28a745 !important; box-shadow: 0 0 10px #28a745; animation: blink 1.2s infinite alternate; }
+        .card.selected-usui-target { border: 3px solid #6f42c1 !important; box-shadow: 0 0 10px #6f42c1; animation: blink 0.8s infinite alternate; }
+        @keyframes blink { 0% { opacity: 0.7; } 100% { opacity: 1; } }
+        button.action-btn { padding: 6px 16px; font-size: 13px; margin-top: 5px; cursor: pointer; }
+        
+        /* 接続画面のスタイル */
+        #setup-screen { background: white; padding: 15px; border-radius: 10px; max-width: 400px; margin: 50px auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .setup-btn { background: #007bff; color: white; border: none; padding: 8px 15px; font-size: 14px; border-radius: 4px; cursor: pointer; margin: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="setup-screen">
+        <h2>先生カードゲーム オンライン</h2>
+        <button class="setup-btn" onclick="createRoom()">部屋を作る（先攻プレイヤーA）</button>
+        <div id="room-id-output" style="margin: 15px 0; font-weight: bold; color: #28a745; word-break: break-all;"></div>
+        <hr style="border: 0; border-top: 1px solid #ccc; margin: 20px 0;">
+        <input type="text" id="room-id-input" placeholder="友達の部屋IDを入力" style="padding: 6px; width: 80%; font-size: 14px;"><br><br>
+        <button class="setup-btn" style="background: #28a745;" onclick="joinRoom()">部屋に入る（後攻プレイヤーB）</button>
+    </div>
+
+    <div id="game-screen" style="display: none;">
+        <h1>先生カードゲーム（オンライン対戦版）</h1>
+        <div id="turn-indicator" style="font-size: 15px; font-weight: bold; margin: 5px; padding: 5px; border-radius: 5px;">接続待ち...</div>
+        
+        <div class="player-hp-box" id="hp-box-B">
+            <strong>相手のHP: <span id="hp-b">10000</span> (手札: <span id="enemy-card-count">0</span>枚)</strong>
+        </div>
+        <div id="guidance-message" style="color: #6f42c1; font-weight: bold; margin: 5px 0; min-height: 18px;"></div>
+        <div class="field" id="field"></div>
+        <h3>あなたの手札（クリックで召喚・発動）</h3>
+        <div class="hand" id="hand"></div>
+        <div class="player-hp-box" id="hp-box-A">
+            <strong>あなたのHP: <span id="hp-a">10000</span></strong>
+        </div>
+        <br>
+        <button class="action-btn" onclick="triggerNextTurn()">ターン終了</button>
+    </div>
+
+    <script>
+        // ==========================================
+        // 通信ロジック部分
+        // ==========================================
+        let peer = null;
+        let conn = null;
+        let amIHost = true; // 部屋を作った側（プレイヤーA）か、入った側（プレイヤーB）か
+
+        function createRoom() {
+            peer = new Peer();
+            peer.on('open', (id) => {
+                document.getElementById('room-id-output').innerHTML = `あなたの部屋ID:<br><span style="font-size:16px; color:blue;">${id}</span><br><br><span style="font-size:11px; color:#555;">このIDを友達に送ってください。接続されると自動で始まります。</span>`;
+            });
+            peer.on('connection', (c) => {
+                conn = c;
+                amIHost = true;
+                setupConnection();
+                initGame(); // ホスト側がゲームを初期化
+                sendState(); // 初期状態をゲストに送信
+            });
+        }
+
+        function joinRoom() {
+            const targetId = document.getElementById('room-id-input').value.trim();
+            if (!targetId) return alert("部屋IDを入力してください");
+            peer = new Peer();
+            peer.on('open', () => {
+                conn = peer.connect(targetId);
+                amIHost = false;
+                conn.on('open', () => {
+                    setupConnection();
+                });
+            });
+        }
+
+        function setupConnection() {
+            document.getElementById('setup-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
+            
+            conn.on('data', (data) => {
+                // 相手から送られてきたゲームデータを自分の画面に同期
+                hpA = data.hpA; hpB = data.hpB;
+                fieldA = data.fieldA; fieldB = data.fieldB;
+                handA = data.handA; handB = data.handB;
+                deckA = data.deckA; deckB = data.deckB;
+                currentTurn = data.currentTurn;
+                hasSummonedTeacherThisTurn = data.hasSummonedTeacherThisTurn;
+                hasCastSpellThisTurn = data.hasCastSpellThisTurn;
+                philosophySpace = data.philosophySpace;
+                
+                if(data.alertMsg) alert(data.alertMsg); // 相手の行動ログのポップアップ通知
+                updateScreen();
+            });
+        }
+
+        function sendState(msg = "") {
+            if (conn && conn.open) {
+                conn.send({
+                    hpA, hpB, fieldA, fieldB, handA, handB, deckA, deckB,
+                    currentTurn, hasSummonedTeacherThisTurn, hasCastSpellThisTurn, philosophySpace,
+                    alertMsg: msg
+                });
+            }
+        }
+
+        function isMyTurn() {
+            return (amIHost && currentTurn === 'A') || (!amIHost && currentTurn === 'B');
+        }
+
+        // ==========================================
+        // カードゲームデータ部分
+        // ==========================================
+        const CARD_LIST = [
+            { id: 1, type: "teacher", name: "長峰", atk: 200, dfn: 2000, rarity: 5, ability: "一回死んだほうがいんじゃないですかねぇwww", effect: "【召喚時】相手のフィールド上のティーチャーを４枚破壊する。" },
+            { id: 2, type: "teacher", name: "薄井", atk: 1000, dfn: 300, rarity: 5, ability: "つまはじき", effect: "【常時】自分のターン中1回、クリックで発動。お互いのHPを入れ替えるか、お互いのフィールドの先生を1体ずつ選んで入れ替える。" },
+            { id: 3, type: "teacher", name: "かくじぃ", atk: 100, dfn: 1000, rarity: 5, ability: "みとけ！", effect: "【身代わり】この先生が場にいる限り、他の仲間への攻撃やプレイヤーへのダイレクトアタックをすべて代わりに受ける。" },
+            { id: 4, type: "teacher", name: "おがぢ", atk: 300, dfn: 300, rarity: 4, ability: "哲学対話", effect: "【召喚時】１ターン相手のフィールド上のティーチャー全員と哲学対話状態にする。１ターン後に全員戻ってくる。" },
+            { id: 5, type: "teacher", name: "ジョージ", atk: 700, dfn: 700, rarity: 5, ability: "諸君ら", effect: "【常時】自身に攻撃したティーチャーには反省文を書かせる。反省文を書くには１ターン必要" },
+            { id: 6, type: "teacher", name: "シドウェル", atk: 100, dfn: 500, rarity: 5, ability: "タメデス", effect: "【常時】相手のアビリティを無効化。" },
+            { id: 7, type: "teacher", name: "しげよし", atk: 300, dfn: 300, rarity: 3, ability: "再再再試", effect: "【常時】戦闘や能力による破壊（致死ダメージ）を3回まで無効化して耐える。" },
+            { id: 8, type: "teacher", name: "三谷", atk: 200, dfn: 200, rarity: 3, ability: "動画みといてね～", effect: "【自動】毎ターン終了時、相手のランダムな先生1体を1ターンの間「動画視聴状態（行動不能）」にする。" },
+            { id: 9, type: "teacher", name: "浅原", atk: 10, dfn: 10, rarity: 1, ability: "尊師", effect: "【常時】宙に浮いているため、通常攻撃が当たらない（回避する）。" },
+            { id: 10, type: "teacher", name: "白戸", atk: 400, dfn: 800, rarity: 2, ability: "次スマホ触っていたら取り上げますよ", effect: "実際に取り上げられることはない。（アビリティの効果なし）" },
+            { id: 11, type: "teacher", name: "木村", atk: 100, dfn: 400, rarity: 2, ability: "にこにこにこにこ", effect: "【自動】毎ターン終了時、プレイヤーのHPを100回復し、自分の場の先生の状態異常をすべて回復する。" },
+            { id: 12, type: "teacher", name: "福地", atk: 100, dfn: 100, rarity: 1, ability: "be good lose", effect: "【召喚時】相手のランダムなティーチャー1体の攻撃力と防御力を「74」にする。" },
+            { id: 13, type: "teacher", name: "畑村", atk: 500, dfn: 200, rarity: 5, ability: "しまえ！", effect: "【召喚時】相手のフィールド上の星4以下のティーチャーがすべて手札に戻る。" },
+            { id: 14, type: "teacher", name: "服部", atk: 300, dfn: 100, rarity: 4, ability: "私物狩り", effect: "【召喚時】相手のフィールドのランダムなカードを1枚奪い取る。" },
+            { id: 15, type: "teacher", name: "赤迫", atk: 600, dfn: 100, rarity: 3, ability: "はいあうとー", effect: "【常時】相手が呪文を発動した時、その効果を跳ね返し、相手自身のフィールドに受けさせる。" },
+            { id: 101, type: "spell", name: "小テスト", atk: "-", dfn: "-", rarity: 1, ability: "呪文カード", effect: "相手のすべてのティーチャーに100ダメージ。" },
+            { id: 102, type: "spell", name: "中間テスト", atk: "-", dfn: "-", rarity: 3, ability: "呪文カード", effect: "相手のすべてのティーチャーに300ダメージ。" },
+            { id: 103, type: "spell", name: "期末テスト", atk: "-", dfn: "-", rarity: 5, ability: "呪文カード", effect: "相手のすべてのティーチャーに700ダメージ。" }
+        ];
+
+        function getShuffledDeck() {
+            let d = [...CARD_LIST].map(c => ({
+                ...c, canAttack: false, hanseibunTurns: 0, videoTurns: 0, revivesLeft: (c.id === 7) ? 3 : 0 
+            }));
+            return d.sort(() => Math.random() - 0.5);
+        }
+
+        function isAbilityBlocked(targetPlayer, cardId) {
+            const enemyField = (targetPlayer === 'A') ? fieldB : fieldA;
+            return enemyField.some(c => c.id === 6);
+        }
+
+        // ==========================================
+        // ゲーム進行変数
+        // ==========================================
+        let hpA = 10000; let hpB = 10000;
+        let currentTurn = 'A';
+        let handA = []; let handB = [];
+        let deckA = []; let deckB = [];
+        let fieldA = []; let fieldB = [];
+        let hasSummonedTeacherThisTurn = false;
+        let hasCastSpellThisTurn = false;
+        let attackingCardIndexes = []; 
+        let usuiMode = 'NONE'; let usuiMyCardIndex = null; let hasUsedUsuiThisTurn = false; 
+        let philosophySpace = [];
+
+        function initGame() {
+            hpA = 10000; hpB = 10000; currentTurn = 'A';
+            deckA = getShuffledDeck(); deckB = getShuffledDeck();
+            handA = []; handB = []; fieldA = []; fieldB = [];
+            hasSummonedTeacherThisTurn = false; hasCastSpellThisTurn = false;
+            attackingCardIndexes = []; usuiMode = 'NONE'; usuiMyCardIndex = null; hasUsedUsuiThisTurn = false; philosophySpace = [];
+            drawToFive('A'); drawToFive('B'); updateScreen();
+        }
+
+        function drawToFive(player) {
+            let hand = (player === 'A' ? handA : handB);
+            let deck = (player === 'A' ? deckA : deckB);
+            while (hand.length < 5) {
+                if (deck.length === 0) deck.push(...getShuffledDeck());
+                hand.push(deck.shift());
+            }
+        }
+
+        // 画面更新処理（自分と相手で視点を切り替える）
+        function updateScreen() {
+            // HPと手札枚数の同期
+            if (amIHost) {
+                document.getElementById('hp-a').innerText = hpA;
+                document.getElementById('hp-b').innerText = hpB;
+                document.getElementById('enemy-card-count').innerText = handB.length;
+            } else {
+                document.getElementById('hp-a').innerText = hpB;
+                document.getElementById('hp-b').innerText = hpA;
+                document.getElementById('enemy-card-count').innerText = handA.length;
+            }
+
+            // ターンインジケーター
+            const indicator = document.getElementById('turn-indicator');
+            if (isMyTurn()) {
+                indicator.innerText = "★ あなたのターンです ★";
+                indicator.style.background = "#d4edda"; indicator.style.color = "#155724";
+            } else {
+                indicator.innerText = "相手のターンを待っています...";
+                indicator.style.background = "#f8d7da"; indicator.style.color = "#721c24";
+            }
+
+            // フィールドの描画（上が相手、下が自分）
+            const fieldDiv = document.getElementById('field'); fieldDiv.innerHTML = '';
+            const fBDiv = document.createElement('div'); fBDiv.style.display = 'flex'; fBDiv.style.gap = '10px'; fBDiv.style.marginBottom = '20px';
+            const fADiv = document.createElement('div'); fADiv.style.display = 'flex'; fADiv.style.gap = '10px';
+
+            if (amIHost) {
+                fieldB.forEach((card, idx) => fBDiv.appendChild(createFieldCardElement(card, 'B', idx)));
+                fieldA.forEach((card, idx) => fADiv.appendChild(createFieldCardElement(card, 'A', idx)));
+            } else {
+                fieldA.forEach((card, idx) => fBDiv.appendChild(createFieldCardElement(card, 'A', idx)));
+                fieldB.forEach((card, idx) => fADiv.appendChild(createFieldCardElement(card, 'B', idx)));
+            }
+            fieldDiv.appendChild(fBDiv); fieldDiv.appendChild(fADiv);
+
+            // ダイレクトアタック用枠線設定
+            const hpBoxA = document.getElementById('hp-box-A'); const hpBoxB = document.getElementById('hp-box-B');
+            hpBoxA.onclick = null; hpBoxA.style.borderColor = 'transparent'; hpBoxB.onclick = null; hpBoxB.style.borderColor = 'transparent';
+            if (attackingCardIndexes.length > 0 && usuiMode === 'NONE' && isMyTurn()) {
+                hpBoxB.style.borderColor = '#dc3545'; hpBoxB.style.borderWidth = '3px'; hpBoxB.style.cursor = 'pointer';
+                hpBoxB.onclick = () => { attackPlayerDirectly(attackingCardIndexes); };
+            }
+
+            // 自分の手札の描画（相手の手札はここには絶対に描画されません）
+            const handDiv = document.getElementById('hand'); handDiv.innerHTML = '';
+            const myHand = amIHost ? handA : handB;
+            myHand.forEach((card, idx) => {
+                const cardEl = createCardElement(card);
+                if (usuiMode === 'NONE' && isMyTurn()) {
+                    cardEl.onclick = () => { summonCard(idx); };
+                } else { cardEl.style.opacity = '0.5'; cardEl.style.cursor = 'default'; }
+                handDiv.appendChild(cardEl);
+            });
+        }
+
+        function createCardElement(card) {
+            const cardEl = document.createElement('div'); cardEl.className = 'card';
+            if (card.type === 'spell') { cardEl.style.background = '#e2d9f3'; cardEl.style.borderColor = '#6f42c1'; }
+            let abilityText = `<div>${card.ability}</div>`;
+            if (card.hanseibunTurns > 0) abilityText = `<div style="color: #dc3545;">📄反省文<br>あと ${card.hanseibunTurns}T</div>`;
+            else if (card.videoTurns > 0) abilityText = `<div style="color: #007bff;">📺動画視聴<br>あと ${card.videoTurns}T</div>`;
+            else if (card.id === 7 && card.revivesLeft > 0) abilityText += `<div style="color: #28a745;">❤️耐性: ${card.revivesLeft}回</div>`;
+            const stars = '★'.repeat(card.rarity);
+            let statsHtml = card.type === 'spell' ? `<span style="color:#6f42c1;">◆呪文</span>` : `<span class="card-atk">攻${card.atk}</span><span class="card-dfn">防${card.dfn}</span>`;
+            cardEl.innerHTML = `<div class="card-header"><div class="card-name">${card.name}</div><div class="card-stats">${statsHtml}</div></div><div style="color: #ffaa00; font-size: 8px; text-align: left;">${stars}</div><div class="card-ability">${abilityText}<div class="card-effect-detail">${card.effect}</div></div>`;
+            return cardEl;
+        }
+
+        function createFieldCardElement(card, player, index) {
+            const cardEl = createCardElement(card);
+            const isMine = (amIHost && player === 'A') || (!amIHost && player === 'B');
+            cardEl.style.background = isMine ? '#cce5ff' : '#f8d7da';
+            cardEl.style.borderColor = isMine ? '#004085' : '#721c24';
+
+            if (card.hanseibunTurns > 0 || card.videoTurns > 0) { cardEl.style.background = '#ccc'; cardEl.style.borderColor = '#555'; }
+
+            if (!isMyTurn()) { cardEl.style.cursor = 'default'; return cardEl; }
+
+            if (!isMine) { // 相手の場のカードをクリックした時
+                if (attackingCardIndexes.length > 0) {
+                    cardEl.style.boxShadow = '0 0 10px #dc3545'; cardEl.style.cursor = 'pointer';
+                    cardEl.onclick = () => { fightCards(attackingCardIndexes, index); };
+                }
+            } else { // 自分の場のカードをクリックした時
+                cardEl.style.cursor = 'pointer';
+                if (card.hanseibunTurns > 0 || card.videoTurns > 0) {
+                    cardEl.onclick = () => alert("行動不能状態です。");
+                } else if (card.id === 2) {
+                    cardEl.onclick = () => handleUsuiClick(index, card.canAttack);
+                } else if (card.canAttack) {
+                    if (attackingCardIndexes.includes(index)) cardEl.classList.add('selected-attacker');
+                    cardEl.onclick = () => { selectAttacker(index); };
+                }
+            }
+            return cardEl;
+        }
+
+        // ==========================================
+        // 以降、ゲームのメインルール・効果処理
+        // ==========================================
+        function summonCard(cardIndex) {
+            if(!isMyTurn()) return;
+            const currentHand = amIHost ? handA : handB;
+            const currentField = amIHost ? fieldA : fieldB;
+            const enemyField = amIHost ? fieldB : fieldA;
+            const enemyHand = amIHost ? handB : handA;
+            const card = currentHand[cardIndex];
+            const pName = amIHost ? "プレイヤーA" : "プレイヤーB";
+
+            if (card.type === 'spell') {
+                if (hasCastSpellThisTurn) return alert("呪文は1ターン1枚までです");
+                let logMsg = `【${pName}】が呪文 [${card.name}] を発動！`;
+                if (isAbilityBlocked(currentTurn, card.id)) {
+                    logMsg += "\nしかしシドウェルの効果で無効化された！";
+                } else {
+                    let targetField = enemyField; let tName = amIHost ? "プレイヤーB" : "プレイヤーA";
+                    const akasako = enemyField.find(c => c.id === 15);
+                    if (akasako && !isAbilityBlocked(currentTurn === 'A'?'B':'A', 15)) {
+                        logMsg += `\n相手の[赤迫]の「はいあうとー」が発動！呪文が跳ね返ってきた！`;
+                        targetField = currentField; tName = pName;
+                    }
+                    if (card.id === 101) castTestSpell(100, targetField, tName);
+                    if (card.id === 102) castTestSpell(300, targetField, tName);
+                    if (card.id === 103) castTestSpell(700, targetField, tName);
+                }
+                currentHand.splice(cardIndex, 1); hasCastSpellThisTurn = true;
+                alert(logMsg); sendState(logMsg); updateScreen(); return;
+            }
+
+            if (hasSummonedTeacherThisTurn) return alert("先生は1ターン1枚までです");
+            let logMsg = `【${pName}】が [${card.name}] を召喚！`;
+
+            if (isAbilityBlocked(currentTurn, card.id)) {
+                logMsg += "\nアビリティは無効化された。";
+            } else {
+                if (card.id === 1) {
+                    let targetCount = Math.min(enemyField.length, 4);
+                    for (let i = targetCount - 1; i >= 0; i--) {
+                        if (enemyField[i].id === 7 && enemyField[i].revivesLeft > 0) enemyField[i].revivesLeft--;
+                        else enemyField.splice(i, 1);
+                    }
+                    logMsg += "\n「一回死んだほうがいんじゃないですかねぇwww」相手を最大4枚破壊！";
+                }
+                if (card.id === 4) {
+                    philosophySpace.push({ card: card, originalPlayer: currentTurn, remainingTurns: 2 });
+                    while(enemyField.length > 0) {
+                        philosophySpace.push({ card: enemyField.shift(), originalPlayer: currentTurn === 'A'?'B':'A', remainingTurns: 2 });
+                    }
+                    logMsg += "\n「哲学対話、しようか」お互いの場を全員連れ去った！";
+                    currentHand.splice(cardIndex, 1); hasSummonedTeacherThisTurn = true;
+                    alert(logMsg); sendState(logMsg); updateScreen(); return;
+                }
+                if (card.id === 12) {
+                    if (enemyField.length > 0) {
+                        const t = enemyField[Math.floor(Math.random() * enemyField.length)];
+                        t.atk = 74; t.dfn = 74; logMsg += `\n「be good lose」[${t.name}]のステータスを74にした！`;
+                    }
+                }
+                if (card.id === 13) {
+                    for (let i = enemyField.length - 1; i >= 0; i--) {
+                        if (enemyField[i].rarity <= 4) {
+                            let rc = enemyField.splice(i, 1)[0]; rc.canAttack = false; rc.hanseibunTurns = 0; rc.videoTurns = 0;
+                            if (rc.id === 7) rc.revivesLeft = 3; enemyHand.push(rc);
+                        }
+                    }
+                    logMsg += "\n「しまえ！」相手の星4以下の先生を全員手札に戻した！";
+                }
+                if (card.id === 14) {
+                    if (enemyField.length > 0) {
+                        const idx = Math.floor(Math.random() * enemyField.length);
+                        const stolen = enemyField.splice(idx, 1)[0]; stolen.canAttack = false; currentField.push(stolen);
+                        logMsg += `\n「私物狩り」相手の [${stolen.name}] を奪い取った！`;
+                    }
+                }
+            }
+            card.canAttack = false; currentField.push(card); currentHand.splice(cardIndex, 1);
+            hasSummonedTeacherThisTurn = true;
+            alert(logMsg); sendState(logMsg); updateScreen();
+        }
+
+        function castTestSpell(damage, targetField, targetFieldName) {
+            const kakujiIndex = targetField.findIndex(c => c.id === 3);
+            if (kakujiIndex !== -1) {
+                const kakuji = targetField[kakujiIndex]; const totalDmg = damage * targetField.length;
+                if (totalDmg > kakuji.dfn) targetField.splice(kakujiIndex, 1);
+            } else {
+                for (let i = targetField.length - 1; i >= 0; i--) {
+                    if (damage > targetField[i].dfn) {
+                        if (targetField[i].id === 7 && targetField[i].revivesLeft > 0) { targetField[i].revivesLeft--; }
+                        else { targetField.splice(i, 1); }
+                    }
+                }
+            }
+        }
+
+        function selectAttacker(idx) { if(!isMyTurn()) return; const pos = attackingCardIndexes.indexOf(idx); if (pos !== -1) attackingCardIndexes.splice(pos, 1); else attackingCardIndexes.push(idx); updateScreen(); }
+
+        function fightCards(myCardIndexes, enemyCardIndex) {
+            if(!isMyTurn()) return;
+            const myField = amIHost ? fieldA : fieldB; const enemyField = amIHost ? fieldB : fieldA;
+            const kakujiIndex = enemyField.findIndex(card => card.id === 3);
+            let defender = enemyField[enemyCardIndex]; let actualEnemyIndex = enemyCardIndex;
+            if (kakujiIndex !== -1 && defender.id !== 3) { actualEnemyIndex = kakujiIndex; defender = enemyField[kakujiIndex]; }
+
+            let totalAtk = 0; let attackerNames = [];
+            myCardIndexes.forEach(idx => { totalAtk += myField[idx].atk; attackerNames.push(`[${myField[idx].name}]`); });
+            let logMsg = `【${amIHost?'プレイヤーA':'プレイヤーB'}】が ${attackerNames.join('+')} で [${defender.name}] に攻撃！`;
+
+            if (defender.id === 9) { logMsg += "\nしかし浅原は宙に浮いているため攻撃が当たらなかった！"; }
+            else if (totalAtk > defender.dfn) {
+                if (defender.id === 7 && defender.revivesLeft > 0) { defender.revivesLeft--; defender.dfn = 300; }
+                else { enemyField.splice(actualEnemyIndex, 1); }
+            }
+            if (defender.id === 5) { myCardIndexes.forEach(idx => { myField[idx].hanseibunTurns = 2; }); }
+            myCardIndexes.forEach(idx => { myField[idx].canAttack = false; });
+            attackingCardIndexes = [];
+            alert(logMsg); sendState(logMsg); updateScreen();
+        }
+
+        function attackPlayerDirectly(myCardIndexes) {
+            if(!isMyTurn()) return;
+            const myField = amIHost ? fieldA : fieldB; const enemyField = amIHost ? fieldB : fieldA;
+            let totalAtk = 0; myCardIndexes.forEach(idx => { totalAtk += myField[idx].atk; });
+            const kakujiIndex = enemyField.findIndex(card => card.id === 3);
+
+            let logMsg = `【${amIHost?'プレイヤーA':'プレイヤーB'}】のダイレクトアタック！`;
+            if (kakujiIndex !== -1) {
+                const kakuji = enemyField[kakujiIndex];
+                if (totalAtk > kakuji.dfn) enemyField.splice(kakujiIndex, 1);
+                logMsg += "\nしかし、かくじぃが身代わりになった！";
+            } else {
+                if (amIHost) hpB -= totalAtk; else hpA -= totalAtk;
+            }
+            myCardIndexes.forEach(idx => { myField[idx].canAttack = false; });
+            attackingCardIndexes = [];
+            alert(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
+        }
+
+        function handleUsuiClick(index, canAttack) {
+            if(!isMyTurn() || isAbilityBlocked(currentTurn, 2)) return;
+            const input = prompt("[薄井]の行動：\n1: 通常攻撃\n2: つまはじき");
+            if (input === "1" && canAttack) selectAttacker(index);
+            else if (input === "2" && !hasUsedUsuiThisTurn) {
+                const opt = prompt("つまはじき効果：\n1: HP入れ替え\n2: 先生入れ替え");
+                if (opt === "1") {
+                    let tmp = hpA; hpA = hpB; hpB = tmp; hasUsedUsuiThisTurn = true;
+                    sendState("薄井の効果でお互いのHPが入れ替わった！"); updateScreen();
+                } else if (opt === "2") {
+                    usuiMode = 'CHOOSE_MY_CARD'; document.getElementById('guidance-message').innerText = "自分の場から差し出す先生を選んでください。"; updateScreen();
+                }
+            }
+        }
+
+        function triggerNextTurn() {
+            if(!isMyTurn()) return;
+            // ターン終了処理へ移行
+            nextTurn();
+        }
+
+        function nextTurn() {
+            if (philosophySpace.length > 0) {
+                philosophySpace.forEach(item => item.remainingTurns--);
+                const returns = philosophySpace.filter(item => item.remainingTurns === 0);
+                philosophySpace = philosophySpace.filter(item => item.remainingTurns > 0);
+                returns.forEach(item => { const tf = item.originalPlayer === 'A' ? fieldA : fieldB; tf.push(item.card); });
+            }
+
+            const myField = amIHost ? fieldA : fieldB; const enemyField = amIHost ? fieldB : fieldA;
+            // 木村の回復
+            myField.forEach(card => {
+                if (card.id === 11 && !isAbilityBlocked(currentTurn, 11)) {
+                    if (currentTurn === 'A') hpA += 100; else hpB += 100;
+                    myField.forEach(ally => { ally.hanseibunTurns = 0; ally.videoTurns = 0; });
+                }
+            });
+
+            myField.forEach(card => { if (card.hanseibunTurns > 0) card.hanseibunTurns--; if (card.videoTurns > 0) card.videoTurns--; });
+
+            // 三谷の動画
+            myField.forEach(card => {
+                if (card.id === 8 && !isAbilityBlocked(currentTurn, 8) && enemyField.length > 0) {
+                    let t = enemyField.filter(c => c.videoTurns === 0 && c.hanseibunTurns === 0);
+                    if (t.length === 0) t = enemyField;
+                    t[Math.floor(Math.random() * t.length)].videoTurns = 1;
+                }
+            });
+
+            enemyField.forEach(card => card.canAttack = (card.hanseibunTurns === 0 && card.videoTurns === 0));
+
+            currentTurn = (currentTurn === 'A') ? 'B' : 'A';
+            hasSummonedTeacherThisTurn = false; hasCastSpellThisTurn = false; attackingCardIndexes = []; usuiMode = 'NONE'; hasUsedUsuiThisTurn = false;
+            drawToFive(currentTurn);
+            
+            sendState(`【${amIHost?'プレイヤーA':'プレイヤーB'}】がターンを終了しました。`);
+            updateScreen();
+        }
+
+        function checkGameOver() {
+            if (hpA <= 0 || hpB <= 0) {
+                alert("ゲーム終了！リセットします。");
+                initGame();
+                sendState();
+            }
+        }
+    </script>
+</body>
+</html>
