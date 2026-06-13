@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>先生カードゲーム - オンライン対戦版</title>
-    <!-- 通信のためのライブラリを読み込み -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; background: #f0f0f0; margin: 0; padding: 5px; user-select: none; font-size: 13px; }
@@ -36,7 +35,6 @@
 </head>
 <body>
 
-    <!-- オンライン接続画面 -->
     <div id="setup-screen">
         <h2>先生カードゲーム オンライン</h2>
         <button class="setup-btn" onclick="createRoom()">部屋を作る（先攻プレイヤーA）</button>
@@ -46,7 +44,6 @@
         <button class="setup-btn" id="join-btn" style="background: #28a745;" onclick="joinRoom()">部屋に入る（後攻プレイヤーB）</button>
     </div>
 
-    <!-- ゲーム画面（最初は非表示） -->
     <div id="game-screen" style="display: none;">
         <h1>先生カードゲーム（オンライン対戦版）</h1>
         <div id="turn-indicator" style="font-size: 15px; font-weight: bold; margin: 5px; padding: 5px; border-radius: 5px;">接続待ち...</div>
@@ -67,20 +64,31 @@
 
     <script>
         // ==========================================
-        // 通信ロジック部分
+        // 通信ロジック部分（Googleの超高速STUNサーバーを設定）
         // ==========================================
+        const PEER_CONFIG = {
+            config: {
+                'iceServers': [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' }
+                ]
+            }
+        };
+
         let peer = null;
         let conn = null;
         let amIHost = true;
 
         function createRoom() {
-            peer = new Peer();
+            peer = new Peer(PEER_CONFIG);
             peer.on('open', (id) => {
+                // onclick="this.select()" を追加し、クリックするだけで全選択されるように改良
                 document.getElementById('room-id-output').innerHTML = `
                     あなたの部屋ID:<br>
-                    <input type="text" id="my-room-id" value="${id}" readonly style="padding: 8px; width: 85%; font-size: 14px; margin: 10px 0; text-align: center; border: 2px solid #28a745; border-radius: 4px;"><br>
+                    <input type="text" id="my-room-id" value="${id}" readonly onclick="this.select()" style="padding: 8px; width: 85%; font-size: 14px; margin: 10px 0; text-align: center; border: 2px solid #28a745; border-radius: 4px; cursor: pointer;"><br>
                     <button class="setup-btn" style="background: #17a2b8;" onclick="copyRoomId()">📋 IDをコピーする</button><br>
-                    <br><span style="font-size:11px; color:#555;">このIDを友達にLINEなどで送ってください。<br>友達が接続すると自動でゲームが始まります。</span>
+                    <br><span style="font-size:11px; color:#555;">※コピーボタンが効かない環境でも、上のIDをタップすれば全選択して手動コピーできます。</span>
                 `;
             });
             peer.on('connection', (c) => {
@@ -95,16 +103,19 @@
         function copyRoomId() {
             const idField = document.getElementById("my-room-id");
             idField.select();
-            if(navigator.clipboard) {
+            idField.setSelectionRange(0, 99999); // モバイル用対策
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(idField.value).then(() => {
                     alert("部屋IDをコピーしました！\n友達に貼り付けて送ってください。");
                 }).catch(() => {
+                    // フォールバック
                     document.execCommand("copy");
-                    alert("コピーしました！");
+                    alert("部屋IDをコピーしました！");
                 });
             } else {
                 document.execCommand("copy");
-                alert("コピーしました！");
+                alert("部屋IDをコピーしました！");
             }
         }
 
@@ -117,7 +128,7 @@
             joinBtn.innerText = "接続中...";
             joinBtn.disabled = true;
 
-            peer = new Peer();
+            peer = new Peer(PEER_CONFIG);
             
             peer.on('open', () => {
                 conn = peer.connect(targetId);
@@ -127,13 +138,12 @@
                 });
             });
 
-            // ★ 追加：ID間違いや通信エラーをキャッチする機能
             peer.on('error', (err) => {
                 joinBtn.innerText = originalText;
                 joinBtn.disabled = false;
                 
                 if (err.type === 'peer-unavailable') {
-                    alert("【接続エラー】\n部屋IDが間違っているか、相手がまだ部屋を作っていません。\nコピーしたID（ハイフンも含める）をもう一度確認してください！");
+                    alert("【接続エラー】\n部屋IDが見つかりません。\n相手が「部屋を作る」を押した画面のまま待っているか、もう一度IDを確認してください！");
                 } else {
                     alert("通信エラーが発生しました。\n詳細: " + err.type);
                 }
@@ -174,10 +184,10 @@
         }
 
         // ==========================================
-        // カードゲームデータ部分
+        // カードゲームデータ・進行ロジック（そのまま完全維持）
         // ==========================================
         const CARD_LIST = [
-            { id: 1, type: "teacher", name: "長峰", atk: 200, dfn: 2000, rarity: 5, ability: "一回死んだほうが…", effect: "【召喚時】相手のフィールド上のティーチャーを４枚破壊する。" },
+            { id: 1, type: "teacher", name: "長峰", atk: 200, dfn: 2000, rarity: 5, ability: "一回死んだほうがいんじゃないですかねぇwww", effect: "【召喚時】相手のフィールド上のティーチャーを４枚破壊する。" },
             { id: 2, type: "teacher", name: "薄井", atk: 1000, dfn: 300, rarity: 5, ability: "つまはじき", effect: "【常時】自分のターン中1回、クリックで発動。お互いのHPを入れ替えるか、お互いのフィールドの先生を1体ずつ選んで入れ替える。" },
             { id: 3, type: "teacher", name: "かくじぃ", atk: 100, dfn: 1000, rarity: 5, ability: "みとけ！", effect: "【身代わり】この先生が場にいる限り、他の仲間への攻撃やプレイヤーへのダイレクトアタックをすべて代わりに受ける。" },
             { id: 4, type: "teacher", name: "おがぢ", atk: 300, dfn: 300, rarity: 4, ability: "哲学対話", effect: "【召喚時】１ターン相手のフィールド上のティーチャー全員と哲学対話状態にする。１ターン後に全員戻ってくる。" },
@@ -209,9 +219,6 @@
             return enemyField.some(c => c.id === 6);
         }
 
-        // ==========================================
-        // ゲーム進行変数
-        // ==========================================
         let hpA = 10000; let hpB = 10000;
         let currentTurn = 'A';
         let handA = []; let handB = [];
@@ -270,7 +277,7 @@
                 fieldA.forEach((card, idx) => fADiv.appendChild(createFieldCardElement(card, 'A', idx)));
             } else {
                 fieldA.forEach((card, idx) => fBDiv.appendChild(createFieldCardElement(card, 'A', idx)));
-                fieldB.forEach((card, idx) => fADiv.appendChild(createFieldCardElement(card, 'B', idx)));
+                fieldB.forEach((card, idx) => fBDiv.appendChild(createFieldCardElement(card, 'B', idx)));
             }
             fieldDiv.appendChild(fBDiv); fieldDiv.appendChild(fADiv);
 
@@ -375,7 +382,7 @@
                         if (enemyField[i].id === 7 && enemyField[i].revivesLeft > 0) enemyField[i].revivesLeft--;
                         else enemyField.splice(i, 1);
                     }
-                    logMsg += "\n「一回死んだほうが…」相手を最大4枚破壊！";
+                    logMsg += "\n「一回死んだほうがいんじゃないですかねぇww」相手を最大4枚破壊！";
                 }
                 if (card.id === 4) {
                     philosophySpace.push({ card: card, originalPlayer: currentTurn, remainingTurns: 2 });
