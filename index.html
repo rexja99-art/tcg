@@ -90,10 +90,12 @@
         let peer = null; let conn = null; let amIHost = true;
         let myName = "プレイヤー"; let enemyName = "通信相手";
 
-        // ★ 4桁のパスワードIDを生成して部屋を作る
+        // ★ 早くしろボタンのカウンターを追加
+        let hurryCount = 0;
+
         function attemptCreateRoom() {
             myName = document.getElementById('player-name-input').value.trim() || "先攻プレイヤー";
-            let randomId = Math.floor(1000 + Math.random() * 9000).toString(); // 1000〜9999
+            let randomId = Math.floor(1000 + Math.random() * 9000).toString(); 
             
             if(peer) peer.destroy();
             peer = new Peer(randomId, PEER_CONFIG);
@@ -109,12 +111,8 @@
             peer.on('connection', (c) => { conn = c; amIHost = true; setupConnection(); initGame(); sendState(); });
             
             peer.on('error', (err) => {
-                // もし他人が同じ4桁を使っていたら、自動で再生成する
-                if (err.type === 'unavailable-id') {
-                    setTimeout(attemptCreateRoom, 200);
-                } else {
-                    alert("エラーが発生しました: " + err.type);
-                }
+                if (err.type === 'unavailable-id') { setTimeout(attemptCreateRoom, 200); } 
+                else { alert("エラーが発生しました: " + err.type); }
             });
         }
 
@@ -135,7 +133,6 @@
             document.getElementById('setup-screen').style.display = 'none'; document.getElementById('game-screen').style.display = 'block';
             addLog(`通信が確立しました！ゲームスタート！`);
             conn.on('data', (data) => {
-                // ★ 特殊な通信（早くしろ、降参）の処理
                 if (data.type === 'hurry') {
                     alert(data.msg); addLog(data.msg); return;
                 }
@@ -145,7 +142,6 @@
                     updateScreen(); checkGameOver(); return;
                 }
 
-                // 通常のステート同期
                 hpA = data.hpA; hpB = data.hpB; fieldA = data.fieldA; fieldB = data.fieldB;
                 handA = data.handA; handB = data.handB; deckA = data.deckA; deckB = data.deckB;
                 currentTurn = data.currentTurn; 
@@ -176,15 +172,19 @@
             }
         }
 
-        // ★ 「早くしろ！」機能
+        // ★ 早くしろ！ボタンの回数制限処理
         function sendHurry() {
+            if (hurryCount >= 10) {
+                alert("「早くしろ！」は1ターンに10回までです！深呼吸して待ちましょう。");
+                return;
+            }
             if (conn && conn.open) {
+                hurryCount++;
                 conn.send({ type: 'hurry', msg: `💢 【${myName}】「はやくしろ！！！」` });
-                addLog("相手に急かすメッセージを送りました。");
+                addLog(`相手を急かしました！（${hurryCount}/10回）`);
             }
         }
 
-        // ★ 白旗（降参）機能
         function surrender() {
             if (!confirm("本当に降参して負けを認めますか？")) return;
             let msg = `🏳️ 【${myName}】が白旗を上げました！降参です！`;
@@ -260,7 +260,7 @@
             hasSummonedTeacherThisTurn = false; hasCastSpellThisTurn = false; hasEquippedWeaponThisTurn = false;
             attackingCardIndexes = []; philosophySpace = [];
             poisonA = 0; poisonB = 0; burnA = 0; burnB = 0; graveyardA = []; graveyardB = [];
-            weaponMode = false; selectedWeaponIndex = null;
+            weaponMode = false; selectedWeaponIndex = null; hurryCount = 0; // ★ リセット
             if(window.autoTurnEndTimer) { clearTimeout(window.autoTurnEndTimer); window.autoTurnEndTimer = null; }
             drawToFive('A'); drawToFive('B'); updateScreen();
         }
@@ -308,7 +308,6 @@
             if (isMyTurn()) { indicator.innerText = "★ あなたのターンです ★"; indicator.style.background = "#d4edda"; indicator.style.color = "#155724";
             } else { indicator.innerText = "相手のターンを待っています..."; indicator.style.background = "#f8d7da"; indicator.style.color = "#721c24"; }
 
-            // ★ ボタンの表示切替
             document.getElementById('end-turn-btn').style.display = isMyTurn() ? 'inline-block' : 'none';
             document.getElementById('hurry-btn').style.display = isMyTurn() ? 'none' : 'inline-block';
 
@@ -328,12 +327,10 @@
             const hpBoxA = document.getElementById('hp-box-A'); const hpBoxB = document.getElementById('hp-box-B');
             hpBoxA.onclick = null; hpBoxA.style.borderColor = 'transparent'; hpBoxB.onclick = null; hpBoxB.style.borderColor = 'transparent';
             
-            // ★ 自分のHPと相手のHP、両方を攻撃対象にできるように変更
             if (attackingCardIndexes.length > 0 && isMyTurn() && !weaponMode) {
-                // 相手への攻撃
                 hpBoxB.style.borderColor = '#dc3545'; hpBoxB.style.borderWidth = '3px'; hpBoxB.style.cursor = 'pointer';
                 hpBoxB.onclick = () => { attackPlayerDirectly(attackingCardIndexes, 'enemy'); };
-                // 自分への攻撃（自傷）
+                
                 hpBoxA.style.borderColor = '#dc3545'; hpBoxA.style.borderWidth = '3px'; hpBoxA.style.cursor = 'pointer';
                 hpBoxA.onclick = () => { attackPlayerDirectly(attackingCardIndexes, 'self'); };
             }
@@ -396,7 +393,6 @@
             if (card.hanseibunTurns > 0 || card.videoTurns > 0) { cardEl.style.background = '#ccc'; cardEl.style.borderColor = '#555'; }
             if (!isMyTurn()) { cardEl.style.cursor = 'default'; return cardEl; }
 
-            // ★ 味方のカードも攻撃のターゲットとして選択可能にする処理
             if (!isMine) {
                 if (attackingCardIndexes.length > 0 && !weaponMode) {
                     cardEl.style.boxShadow = '0 0 10px #dc3545'; cardEl.style.cursor = 'pointer';
@@ -408,7 +404,6 @@
                     cardEl.style.boxShadow = '0 0 10px #28a745'; cardEl.classList.add('selected-attacker');
                     cardEl.onclick = () => { applyWeapon(index); };
                 } else if (attackingCardIndexes.length > 0) {
-                    // もし攻撃者自身をクリックした場合はキャンセル、別の味方なら「味方への攻撃」
                     if (attackingCardIndexes.includes(index)) {
                         cardEl.classList.add('selected-attacker'); cardEl.onclick = () => { selectAttacker(index); };
                     } else {
@@ -613,7 +608,6 @@
 
         function selectAttacker(idx) { if(!isMyTurn() || weaponMode) return; const pos = attackingCardIndexes.indexOf(idx); if (pos !== -1) attackingCardIndexes.splice(pos, 1); else attackingCardIndexes.push(idx); updateScreen(); }
 
-        // ★ 戦闘処理：自分への攻撃（自傷）に対応
         function fightCards(myCardIndexes, targetCardIndex, targetMode) {
             if(!isMyTurn()) return;
             const myField = amIHost ? fieldA : fieldB; 
@@ -624,8 +618,6 @@
             if (kakujiIndex !== -1 && defender.id !== 3) { actualEnemyIndex = kakujiIndex; defender = targetField[kakujiIndex]; }
 
             let totalAtk = 0; let attackerNames = [];
-            
-            // ★ 配列操作でズレないように攻撃カードの参照を保存しておく
             let attackers = myCardIndexes.map(idx => myField[idx]);
             attackers.forEach(card => { totalAtk += card.atk; attackerNames.push(`[${card.name}]`); });
             
@@ -664,7 +656,6 @@
             addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
         }
 
-        // ★ ダイレクトアタック：自分自身への攻撃に対応
         function attackPlayerDirectly(myCardIndexes, targetMode) {
             if(!isMyTurn()) return;
             const myField = amIHost ? fieldA : fieldB; 
@@ -758,12 +749,13 @@
 
             enemyField.forEach(card => card.canAttack = (card.hanseibunTurns === 0 && card.videoTurns === 0));
 
+            // ★ ターン切り替え
             currentTurn = (currentTurn === 'A') ? 'B' : 'A';
             hasSummonedTeacherThisTurn = false; hasCastSpellThisTurn = false; hasEquippedWeaponThisTurn = false;
             attackingCardIndexes = [];
+            hurryCount = 0; // ★ ターンが切り替わるタイミングで急かす回数をリセット
             drawToFive(currentTurn);
 
-            // ★ 木村先生の浄化効果（ターン開始時）
             const nextActiveField = currentTurn === 'A' ? fieldA : fieldB;
             nextActiveField.forEach(card => {
                 if (card.id === 11 && !isAbilityBlocked(currentTurn, 11)) {
