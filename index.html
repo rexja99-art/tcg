@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>先生カードゲーム - オンライン対戦版</title>
-    <!-- 通信のためのライブラリを読み込み -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         /* 全体の設定（横揺れ防止） */
@@ -48,7 +47,6 @@
 </head>
 <body>
 
-    <!-- オンライン接続画面 -->
     <div id="setup-screen">
         <h2>先生カードゲーム オンライン</h2>
         <button class="setup-btn" onclick="createRoom()">部屋を作る（先攻プレイヤーA）</button>
@@ -58,18 +56,15 @@
         <button class="setup-btn" id="join-btn" style="background: #28a745;" onclick="joinRoom()">部屋に入る（後攻プレイヤーB）</button>
     </div>
 
-    <!-- ゲーム画面 -->
     <div id="game-screen" style="display: none;">
         <h1>先生カードゲーム（オンライン対戦版）</h1>
         <div id="turn-indicator" style="font-size: 15px; font-weight: bold; margin: 5px; padding: 5px; border-radius: 5px;">接続待ち...</div>
         
-        <!-- 行動ログコンテナ -->
         <div id="action-log-container" style="width: 95%; max-width: 600px; margin: 5px auto; background: #fff; border: 1px solid #ccc; border-radius: 5px; text-align: left; padding: 5px; box-sizing: border-box;">
             <div style="font-size: 11px; font-weight: bold; border-bottom: 1px solid #ccc; margin-bottom: 3px; color: #555;">📖 行動ログ</div>
             <div id="action-log" style="height: 70px; overflow-y: auto; font-size: 11.5px; color: #333; line-height: 1.4;"></div>
         </div>
 
-        <!-- HP表示（初期値5000に変更） -->
         <div class="player-hp-box" id="hp-box-B">
             <strong>相手のHP: <span id="hp-b">5000</span> (手札: <span id="enemy-card-count">0</span>枚)</strong>
         </div>
@@ -198,20 +193,22 @@
                 hasCastSpellThisTurn = data.hasCastSpellThisTurn;
                 philosophySpace = data.philosophySpace;
                 
-                if(data.alertMsg) {
-                    addLog(data.alertMsg);
-                    alert(data.alertMsg);
-                }
+                // ★通信時のログとポップアップを完全に分離
+                if(data.logMsg) addLog(data.logMsg);
+                if(data.alertMsg) alert(data.alertMsg); 
+                
                 updateScreen();
             });
         }
 
-        function sendState(msg = "") {
+        // ★ポップアップ用テキスト(popupText)を別で送信できるように改良
+        function sendState(logText = "", popupText = "") {
             if (conn && conn.open) {
                 conn.send({
                     hpA, hpB, fieldA, fieldB, handA, handB, deckA, deckB,
                     currentTurn, hasSummonedTeacherThisTurn, hasCastSpellThisTurn, philosophySpace,
-                    alertMsg: msg
+                    logMsg: logText,
+                    alertMsg: popupText
                 });
             }
         }
@@ -224,7 +221,6 @@
         // カードゲームデータ・進行ロジック
         // ==========================================
         const CARD_LIST = [
-            // ★長峰先生のアビリティ名を変更
             { id: 1, type: "teacher", name: "長峰", atk: 200, dfn: 2000, rarity: 5, ability: "一回死んだほうがいんじゃないですかねぇww", effect: "【召喚時】相手のフィールド上のティーチャーを４枚破壊する。" },
             { id: 2, type: "teacher", name: "薄井", atk: 1000, dfn: 300, rarity: 5, ability: "つまはじき", effect: "【常時】自分のターン中1回、クリックで発動。お互いのHPを入れ替えるか、お互いのフィールドの先生を1体ずつ選んで入れ替える。" },
             { id: 3, type: "teacher", name: "かくじぃ", atk: 100, dfn: 1000, rarity: 5, ability: "みとけ！", effect: "【身代わり】この先生が場にいる限り、他の仲間への攻撃やプレイヤーへのダイレクトアタックをすべて代わりに受ける。" },
@@ -257,7 +253,6 @@
             return enemyField.some(c => c.id === 6);
         }
 
-        // ★HPの初期値を5000に調整
         let hpA = 5000; let hpB = 5000;
         let currentTurn = 'A';
         let handA = []; let handB = [];
@@ -270,7 +265,6 @@
         let philosophySpace = [];
 
         function initGame() {
-            // ★リセット時のHPも5000に調整
             hpA = 5000; hpB = 5000; currentTurn = 'A';
             deckA = getShuffledDeck(); deckB = getShuffledDeck();
             handA = []; handB = []; fieldA = []; fieldB = [];
@@ -369,6 +363,7 @@
                 }
             } else { 
                 cardEl.style.cursor = 'pointer';
+                // ★ここはプレイヤーへの警告なのでアラートを残す
                 if (card.hanseibunTurns > 0) {
                     cardEl.onclick = () => alert("「容赦ない一括」を受け、反省文を書いていて行動不能です！");
                 } else if (card.videoTurns > 0) {
@@ -393,7 +388,7 @@
             const pName = amIHost ? "プレイヤーA" : "プレイヤーB";
 
             if (card.type === 'spell') {
-                if (hasCastSpellThisTurn) return alert("呪文は1ターン1枚までです");
+                if (hasCastSpellThisTurn) return alert("呪文は1ターン1枚までです"); // ★警告はポップアップ
                 let logMsg = `【${pName}】が呪文 [${card.name}] を発動！`;
                 if (isAbilityBlocked(currentTurn, card.id)) {
                     logMsg += "\nしかしシドウェルの効果で無効化された！";
@@ -409,10 +404,11 @@
                     if (card.id === 103) castTestSpell(700, targetField, tName);
                 }
                 currentHand.splice(cardIndex, 1); hasCastSpellThisTurn = true;
-                addLog(logMsg); alert(logMsg); sendState(logMsg); updateScreen(); checkGameOver(); return;
+                // ★アラート(ポップアップ)を削除、ログのみにする
+                addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver(); return;
             }
 
-            if (hasSummonedTeacherThisTurn) return alert("先生は1ターン1枚までです");
+            if (hasSummonedTeacherThisTurn) return alert("先生は1ターン1枚までです"); // ★警告はポップアップ
             let logMsg = `【${pName}】が [${card.name}] を召喚！`;
 
             if (isAbilityBlocked(currentTurn, card.id)) {
@@ -433,7 +429,8 @@
                     }
                     logMsg += "\n「哲学対話、しようか」お互いの場を全員連れ去った！";
                     currentHand.splice(cardIndex, 1); hasSummonedTeacherThisTurn = true;
-                    addLog(logMsg); alert(logMsg); sendState(logMsg); updateScreen(); checkGameOver(); return;
+                    // ★アラート(ポップアップ)を削除
+                    addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver(); return;
                 }
                 if (card.id === 12) {
                     if (enemyField.length > 0) {
@@ -460,7 +457,9 @@
             }
             card.canAttack = false; currentField.push(card); currentHand.splice(cardIndex, 1);
             hasSummonedTeacherThisTurn = true;
-            addLog(logMsg); alert(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
+            
+            // ★アラート(ポップアップ)を削除
+            addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
         }
 
         function castTestSpell(damage, targetField, targetFieldName) {
@@ -503,7 +502,9 @@
             
             myCardIndexes.forEach(idx => { myField[idx].canAttack = false; });
             attackingCardIndexes = [];
-            addLog(logMsg); alert(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
+            
+            // ★アラート(ポップアップ)を削除
+            addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
         }
 
         function attackPlayerDirectly(myCardIndexes) {
@@ -522,11 +523,14 @@
             }
             myCardIndexes.forEach(idx => { myField[idx].canAttack = false; });
             attackingCardIndexes = [];
-            addLog(logMsg); alert(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
+            
+            // ★アラート(ポップアップ)を削除
+            addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
         }
 
         function handleUsuiClick(index, canAttack) {
             if(!isMyTurn() || isAbilityBlocked(currentTurn, 2)) return;
+            // ★このpromptはプレイヤーに選択させるためのものなので残す必要があります
             const input = prompt("[薄井]の行動：\n1: 通常攻撃\n2: つまはじき");
             if (input === "1" && canAttack) selectAttacker(index);
             else if (input === "2" && !hasUsedUsuiThisTurn) {
@@ -534,7 +538,8 @@
                 if (opt === "1") {
                     let tmp = hpA; hpA = hpB; hpB = tmp; hasUsedUsuiThisTurn = true;
                     let msg = "薄井の「つまはじき」が発動！お互いのHPが入れ替わった！";
-                    addLog(msg); alert(msg); sendState(msg); updateScreen(); checkGameOver();
+                    // ★アラート(ポップアップ)を削除
+                    addLog(msg); sendState(msg); updateScreen(); checkGameOver();
                 } else if (opt === "2") {
                     usuiMode = 'CHOOSE_MY_CARD'; document.getElementById('guidance-message').innerText = "自分の場から差し出す先生を選んでください。"; updateScreen();
                 }
@@ -581,10 +586,10 @@
             hasSummonedTeacherThisTurn = false; hasCastSpellThisTurn = false; attackingCardIndexes = []; usuiMode = 'NONE'; hasUsedUsuiThisTurn = false;
             drawToFive(currentTurn);
             
-            addLog(endTurnMsg); alert(endTurnMsg); sendState(endTurnMsg); updateScreen();
+            // ★アラート(ポップアップ)を削除
+            addLog(endTurnMsg); sendState(endTurnMsg); updateScreen();
         }
 
-        // ★勝敗がはっきり分かるように勝利メッセージを強化
         function checkGameOver() {
             if (hpA <= 0 || hpB <= 0) {
                 let winnerStr = "";
@@ -597,10 +602,12 @@
                 }
                 
                 let msg = `🎉 決着がつきました 🎉\n【 ${winnerStr} 】\n\nゲームを初期状態にリセットします。`;
+                
+                // ★ここは超重要なので、特別に「ポップアップ(alertMsg)」として相手にも送信します
                 addLog(msg); 
                 alert(msg); 
                 initGame(); 
-                sendState(msg);
+                sendState(msg, msg); // 第一引数がログ用、第二引数がポップアップ用
             }
         }
     </script>
