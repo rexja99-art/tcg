@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>先生カードゲーム - オンライン対戦版</title>
+    <!-- 通信のためのライブラリを読み込み -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; background: #f0f0f0; margin: 0; padding: 5px; user-select: none; font-size: 13px; overflow-x: hidden; }
@@ -121,7 +122,6 @@
                 currentTurn = data.currentTurn; hasSummonedTeacherThisTurn = data.hasSummonedTeacherThisTurn;
                 hasCastSpellThisTurn = data.hasCastSpellThisTurn; philosophySpace = data.philosophySpace;
                 
-                // ★追加システム（墓地と毒）の同期
                 poisonA = data.poisonA; poisonB = data.poisonB; graveyardA = data.graveyardA; graveyardB = data.graveyardB;
 
                 if(data.playerName) enemyName = data.playerName;
@@ -136,7 +136,7 @@
                 conn.send({
                     hpA, hpB, fieldA, fieldB, handA, handB, deckA, deckB,
                     currentTurn, hasSummonedTeacherThisTurn, hasCastSpellThisTurn, philosophySpace,
-                    poisonA, poisonB, graveyardA, graveyardB, // 墓地と毒を送信
+                    poisonA, poisonB, graveyardA, graveyardB,
                     logMsg: logText, alertMsg: popupText, playerName: myName
                 });
             }
@@ -163,15 +163,13 @@
             { id: 13, type: "teacher", name: "畑村", atk: 500, dfn: 200, rarity: 5, ability: "しまえ！", effect: "【召喚時】相手のフィールド上の星4以下のティーチャーがすべて手札に戻る。" },
             { id: 14, type: "teacher", name: "服部", atk: 300, dfn: 100, rarity: 4, ability: "私物狩り", effect: "【召喚時】相手のフィールドのランダムなカードを1枚奪い取る。" },
             { id: 15, type: "teacher", name: "赤迫", atk: 600, dfn: 100, rarity: 3, ability: "はいあうとー", effect: "【常時】相手が呪文を発動した時、その効果を跳ね返し、相手自身のフィールドに受けさせる。" },
-            
-            // ★ 新規追加カード群
             { id: 16, type: "teacher", name: "内堀", atk: 300, dfn: 400, rarity: 4, ability: "魂の選択", effect: "【召喚時】倒された味方のティーチャーをランダムに1体復活させる。" },
+            
             { id: 104, type: "spell", name: "寮飯", atk: "-", dfn: "-", rarity: 2, ability: "呪文カード", effect: "相手プレイヤーを「毒」状態にする（毎ターン100ダメージ）。" },
             { id: 105, type: "spell", name: "学食", atk: "-", dfn: "-", rarity: 2, ability: "呪文カード", effect: "自分のフィールドにいるすべてのティーチャーの攻撃力を+100する。" },
             { id: 106, type: "spell", name: "おがぢの大福帳", atk: "-", dfn: "-", rarity: 4, ability: "呪文カード", effect: "「おがぢ」を自分のフィールドに呼び出し、効果を発動する。" },
             { id: 107, type: "spell", name: "薄井の復讐", atk: "-", dfn: "-", rarity: 5, ability: "呪文カード", effect: "味方のランダムな先生1体に「道連れ」を付与。それを倒した相手を即死させる。" },
             
-            // 既存の呪文
             { id: 101, type: "spell", name: "小テスト", atk: "-", dfn: "-", rarity: 1, ability: "呪文カード", effect: "相手のすべてのティーチャーに100ダメージ。" },
             { id: 102, type: "spell", name: "中間テスト", atk: "-", dfn: "-", rarity: 3, ability: "呪文カード", effect: "相手のすべてのティーチャーに300ダメージ。" },
             { id: 103, type: "spell", name: "期末テスト", atk: "-", dfn: "-", rarity: 5, ability: "呪文カード", effect: "相手のすべてのティーチャーに700ダメージ。" }
@@ -186,16 +184,12 @@
             return enemyField.some(c => c.id === 6);
         }
 
-        // ==========================================
-        // ゲーム進行変数
-        // ==========================================
         let hpA = 5000; let hpB = 5000;
         let currentTurn = 'A'; let handA = []; let handB = []; let deckA = []; let deckB = [];
         let fieldA = []; let fieldB = [];
         let hasSummonedTeacherThisTurn = false; let hasCastSpellThisTurn = false;
         let attackingCardIndexes = []; let philosophySpace = []; window.autoTurnEndTimer = null; 
         
-        // ★ 追加：状態異常と墓地
         let poisonA = 0; let poisonB = 0;
         let graveyardA = []; let graveyardB = [];
 
@@ -210,10 +204,8 @@
             drawToFive('A'); drawToFive('B'); updateScreen();
         }
 
-        // ★ 破壊されたカードを墓地に送る関数
         function sendToGraveyard(card, player) {
             let g = player === 'A' ? graveyardA : graveyardB;
-            // 状態異常等をリセットしてから墓地へ
             card.canAttack = false; card.hanseibunTurns = 0; card.videoTurns = 0; card.hasRevenge = false;
             if (card.id === 7) card.revivesLeft = 3;
             g.push(card);
@@ -231,7 +223,6 @@
             document.getElementById('display-my-name').innerText = `【${myName}】`;
             document.getElementById('display-enemy-name').innerText = `【${enemyName}】`;
 
-            // ★ 毒状態の表示を更新
             let hpAStr = hpA + (poisonA > 0 ? ` (☠️毒)` : "");
             let hpBStr = hpB + (poisonB > 0 ? ` (☠️毒)` : "");
 
@@ -300,7 +291,6 @@
             else if (card.videoTurns > 0) abilityText = `<div style="color: #007bff;">📺動画視聴<br>あと ${card.videoTurns}T</div>`;
             else if (card.id === 7 && card.revivesLeft > 0) abilityText += `<div style="color: #28a745;">❤️耐性: ${card.revivesLeft}回</div>`;
             
-            // ★ 薄井の復讐効果のUI
             if (card.hasRevenge) abilityText += `<div style="color: #8b0000; font-weight:bold; margin-top:2px;">🔥道連れ🔥</div>`;
 
             const stars = '★'.repeat(card.rarity);
@@ -346,7 +336,7 @@
                 
                 let targetField = enemyField; let tName = enemyName;
                 const akasako = enemyField.find(c => c.id === 15);
-                // ★シドウェルの無効化対象外にしつつ、赤迫のアビリティ跳ね返しは処理
+                
                 if (akasako && !isAbilityBlocked(currentTurn === 'A'?'B':'A', 15)) {
                     logMsg += `\n相手の[赤迫]の「はいあうとー」が発動！呪文が跳ね返ってきた！`;
                     targetField = currentField; tName = myName;
@@ -357,34 +347,38 @@
                 if (card.id === 102) castTestSpell(300, targetField, tPlayer);
                 if (card.id === 103) castTestSpell(700, targetField, tPlayer);
                 
-                // ★新呪文の処理
                 if (card.id === 104) {
                     if (targetField === enemyField) {
                         if (amIHost) poisonB++; else poisonA++;
-                    } else { // 跳ね返された場合
+                    } else { 
                         if (amIHost) poisonA++; else poisonB++;
                     }
                     logMsg += `\n相手プレイヤーを毒状態にした！`;
                 }
                 if (card.id === 105) {
-                    // 学食は「自分のフィールド」が対象。跳ね返されたら相手のフィールド。
                     targetField === enemyField ? currentField.forEach(c => c.atk += 100) : targetField.forEach(c => c.atk += 100);
                     logMsg += `\n味方ティーチャー全員の攻撃力が100アップ！`;
                 }
+                
+                // ★ 「おがぢの大福帳」のバグ修正版
                 if (card.id === 106) {
                     let ogaji = { ...CARD_LIST.find(c => c.id === 4), canAttack: false, hanseibunTurns: 0, videoTurns: 0, revivesLeft: 0, hasRevenge: false };
-                    let targetF = targetField === enemyField ? currentField : enemyField; // 跳ね返し考慮
-                    targetF.push(ogaji);
+                    
+                    let isReflected = (targetField === currentField);
+                    let ownerPlayer = isReflected ? (currentTurn === 'A' ? 'B' : 'A') : currentTurn;
+                    let victimPlayer = isReflected ? currentTurn : (currentTurn === 'A' ? 'B' : 'A');
+                    let victimField = isReflected ? currentField : enemyField;
+
                     logMsg += `\n大福帳から「おがぢ」が呼び出された！`;
-                    philosophySpace.push({ card: ogaji, originalPlayer: currentTurn, remainingTurns: 2 });
-                    let opponentF = targetF === currentField ? enemyField : currentField;
-                    while(opponentF.length > 0) {
-                        philosophySpace.push({ card: opponentF.shift(), originalPlayer: currentTurn === 'A'?'B':'A', remainingTurns: 2 });
+                    philosophySpace.push({ card: ogaji, originalPlayer: ownerPlayer, remainingTurns: 2 });
+                    
+                    while(victimField.length > 0) {
+                        philosophySpace.push({ card: victimField.shift(), originalPlayer: victimPlayer, remainingTurns: 2 });
                     }
-                    logMsg += "\nそのまま「哲学対話、しようか」が発動し、お互いの場を連れ去った！";
+                    logMsg += "\nそのまま「哲学対話、しようか」が発動し、場を連れ去った！";
                 }
                 if (card.id === 107) {
-                    let targetF = targetField === enemyField ? currentField : enemyField; // 跳ね返し考慮
+                    let targetF = targetField === enemyField ? currentField : enemyField;
                     if (targetF.length > 0) {
                         let target = targetF[Math.floor(Math.random() * targetF.length)];
                         target.hasRevenge = true;
@@ -413,7 +407,6 @@
                     }
                     logMsg += "\n「一回死んだほうがいんじゃないですかねぇww」相手を最大4枚破壊！";
                 }
-                // ★薄井先生（貫通ダメージ）処理を「墓地送り」に対応
                 if (card.id === 2) {
                     let remainingDmg = 2000;
                     logMsg += `\n「つまはじき」発動！相手の先生に左から合計2000ダメージを割り振る！`;
@@ -461,7 +454,6 @@
                         logMsg += `\n「私物狩り」相手の [${stolen.name}] を奪い取った！`;
                     }
                 }
-                // ★内堀の復活処理
                 if (card.id === 16) {
                     let myGrave = amIHost ? graveyardA : graveyardB;
                     if (myGrave.length > 0) {
@@ -528,7 +520,6 @@
                 logMsg += `\n[ジョージ]の「容赦ない一括」！攻撃した先生は反省文を書かされる！`;
             }
             
-            // ★薄井の復讐（道連れ処理）
             if (isDefenderDestroyed && defender.hasRevenge) {
                 logMsg += `\n💥 [薄井の復讐] が発動！倒したティーチャーは道連れにされた！`;
                 myCardIndexes.sort((a,b)=>b-a).forEach(idx => {
@@ -599,7 +590,6 @@
                 }
             });
             
-            // ★ 毒のダメージ処理（ターン終了時に自分の毒を受ける）
             if (currentTurn === 'A' && poisonA > 0) {
                 let pd = poisonA * 100; hpA -= pd;
                 endTurnMsg += `\n☠️ 毒の効果！【${amIHost ? myName : enemyName}】は ${pd} のダメージを受けた！`;
