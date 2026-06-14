@@ -162,7 +162,8 @@
             { id: 8, type: "teacher", name: "三谷", atk: 200, dfn: 200, rarity: 3, ability: "動画みといてね～", effect: "【自動】毎ターン終了時、相手のランダムな先生1体を1ターンの間「動画視聴状態（行動不能）」にする。" },
             { id: 9, type: "teacher", name: "浅原", atk: 10, dfn: 10, rarity: 1, ability: "尊師", effect: "【常時】宙に浮いているため、通常攻撃が当たらない（回避する）。" },
             { id: 10, type: "teacher", name: "白戸", atk: 400, dfn: 800, rarity: 2, ability: "次スマホ触っていたら取り上げますよ", effect: "実際に取り上げられることはない。（アビリティの効果なし）" },
-            { id: 11, type: "teacher", name: "木村", atk: 100, dfn: 400, rarity: 2, ability: "にこにこにこにこ", effect: "【自動】毎ターン終了時、プレイヤーのHPを100回復し、自分の場の先生の状態異常をすべて回復する。" },
+            // ★木村の効果を修正
+            { id: 11, type: "teacher", name: "木村", atk: 100, dfn: 400, rarity: 2, ability: "にこにこにこにこ", effect: "【自動】毎ターン開始時、プレイヤーのHPを100回復し、プレイヤーと自分の場の先生の状態異常をすべて回復する。" },
             { id: 12, type: "teacher", name: "福地", atk: 100, dfn: 100, rarity: 1, ability: "be good lose", effect: "【召喚時】相手のランダムなティーチャー1体の攻撃力と防御力を「74」にする。" },
             { id: 13, type: "teacher", name: "畑村", atk: 500, dfn: 200, rarity: 5, ability: "しまえ！", effect: "【召喚時】相手のフィールド上の星4以下のティーチャーがすべて手札に戻る。" },
             { id: 14, type: "teacher", name: "服部", atk: 300, dfn: 100, rarity: 4, ability: "私物狩り", effect: "【召喚時】相手のフィールドのランダムなカードを1枚奪い取る。" },
@@ -227,11 +228,27 @@
             g.push(card);
         }
 
+        // ★ 手札制限ロジックの追加（武器・呪文はそれぞれ手札に1枚まで）
         function drawToFive(player) {
-            let hand = (player === 'A' ? handA : handB); let deck = (player === 'A' ? deckA : deckB);
+            let hand = (player === 'A' ? handA : handB); 
+            let deck = (player === 'A' ? deckA : deckB);
+            let attempts = 0; // 無限ループ防止用カウンター
             while (hand.length < 5) {
                 if (deck.length === 0) deck.push(...getShuffledDeck());
+                let nextCard = deck[0];
+                
+                let hasSpell = hand.some(c => c.type === 'spell');
+                let hasWeapon = hand.some(c => c.type === 'weapon');
+                
+                // 呪文または武器がダブる場合はデッキの底に送って引き直す
+                if (attempts < 100 && ((nextCard.type === 'spell' && hasSpell) || (nextCard.type === 'weapon' && hasWeapon))) {
+                    deck.push(deck.shift());
+                    attempts++;
+                    continue;
+                }
+                
                 hand.push(deck.shift());
+                attempts = 0; // 成功したらカウンターリセット
             }
         }
 
@@ -431,7 +448,6 @@
                 }
                 if (card.id === 109) {
                     logMsg += `\nトグルスイッチ作動！！大爆発で敵味方すべての先生に1000ダメージ！`;
-                    // ★ 修正：確実に敵味方両方の陣地にダメージ処理を通す
                     castTestSpell(1000, enemyField, amIHost ? 'B' : 'A');
                     castTestSpell(1000, currentField, amIHost ? 'A' : 'B');
                 }
@@ -533,7 +549,6 @@
             addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
         }
 
-        // ★ 呪文ダメージ判定（>= に修正済み）
         function castTestSpell(damage, targetField, targetPlayer) {
             const kakujiIndex = targetField.findIndex(c => c.id === 3);
             if (kakujiIndex !== -1) {
@@ -563,11 +578,9 @@
             let logMsg = `【${myName}】が ${attackerNames.join('+')} で [${defender.name}] に攻撃！`;
 
             let isDefenderDestroyed = false;
-            // ★ 道連れフラグを一時保存して確実に発動させる
             let isRevengeActive = defender.hasRevenge;
 
             if (defender.id === 9) { logMsg += "\nしかし浅原は宙に浮いているため攻撃が当たらなかった！"; }
-            // ★ 戦闘ダメージ判定（>= に修正済み）
             else if (totalAtk >= defender.dfn) {
                 if (defender.id === 7 && defender.revivesLeft > 0) { defender.revivesLeft--; defender.dfn = 300; }
                 else { 
@@ -583,7 +596,6 @@
             
             if (isDefenderDestroyed && isRevengeActive) {
                 logMsg += `\n💥 [薄井の復讐] が発動！攻撃に参加したティーチャーは全員道連れにされた！`;
-                // 配列の後ろから削除してインデックスずれを防ぐ
                 let sortedIdxs = [...myCardIndexes].sort((a,b)=>b-a);
                 sortedIdxs.forEach(idx => {
                     if (myField[idx]) {
@@ -595,7 +607,6 @@
                 myCardIndexes.forEach(idx => { if(myField[idx]) myField[idx].canAttack = false; });
             }
             attackingCardIndexes = [];
-            
             addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
         }
 
@@ -611,7 +622,6 @@
                 let isKakujiDestroyed = false;
                 let isRevengeActive = kakuji.hasRevenge;
 
-                // ★ ダイレクトアタックのかくじぃ判定（>= に修正済み）
                 if (totalAtk >= kakuji.dfn) {
                     let d = enemyField.splice(kakujiIndex, 1)[0];
                     sendToGraveyard(d, amIHost ? 'B' : 'A');
@@ -656,26 +666,9 @@
             }
 
             const myField = amIHost ? fieldA : fieldB; const enemyField = amIHost ? fieldB : fieldA;
-            myField.forEach(card => {
-                if (card.id === 11 && !isAbilityBlocked(currentTurn, 11)) {
-                    if (currentTurn === 'A') hpA += 100; else hpB += 100;
-                    myField.forEach(ally => { ally.hanseibunTurns = 0; ally.videoTurns = 0; });
-                }
-            });
 
-            myField.forEach(card => { if (card.hanseibunTurns > 0) card.hanseibunTurns--; if (card.videoTurns > 0) card.videoTurns--; });
-
+            // ★ ここで自分のターンの終了ダメージ処理（毒・やけど）
             let endTurnMsg = `【${myName}】がターンを終了しました。`;
-            myField.forEach(card => {
-                if (card.id === 8 && !isAbilityBlocked(currentTurn, 8) && enemyField.length > 0) {
-                    let t = enemyField.filter(c => c.videoTurns === 0 && c.hanseibunTurns === 0);
-                    if (t.length === 0) t = enemyField;
-                    let target = t[Math.floor(Math.random() * t.length)];
-                    target.videoTurns = 1;
-                    endTurnMsg += `\n[三谷]の効果発動！相手の[${target.name}]は動画に夢中になっている！`;
-                }
-            });
-            
             if (currentTurn === 'A' && poisonA > 0) {
                 let pd = poisonA * 200; hpA -= pd; endTurnMsg += `\n☠️ 毒の効果！【${amIHost ? myName : enemyName}】は ${pd} のダメージを受けた！`;
             } else if (currentTurn === 'B' && poisonB > 0) {
@@ -687,12 +680,36 @@
                 let bd = burnB * 100; hpB -= bd; endTurnMsg += `\n🔥 やけどの効果！【${amIHost ? enemyName : myName}】は ${bd} のダメージを受けた！`;
             }
 
+            myField.forEach(card => { if (card.hanseibunTurns > 0) card.hanseibunTurns--; if (card.videoTurns > 0) card.videoTurns--; });
+
+            myField.forEach(card => {
+                if (card.id === 8 && !isAbilityBlocked(currentTurn, 8) && enemyField.length > 0) {
+                    let t = enemyField.filter(c => c.videoTurns === 0 && c.hanseibunTurns === 0);
+                    if (t.length === 0) t = enemyField;
+                    let target = t[Math.floor(Math.random() * t.length)];
+                    target.videoTurns = 1;
+                    endTurnMsg += `\n[三谷]の効果発動！相手の[${target.name}]は動画に夢中になっている！`;
+                }
+            });
+
             enemyField.forEach(card => card.canAttack = (card.hanseibunTurns === 0 && card.videoTurns === 0));
 
+            // ★ ターン切り替え
             currentTurn = (currentTurn === 'A') ? 'B' : 'A';
             hasSummonedTeacherThisTurn = false; hasCastSpellThisTurn = false; hasEquippedWeaponThisTurn = false;
             attackingCardIndexes = [];
             drawToFive(currentTurn);
+
+            // ★ ターン開始時の効果（木村）
+            const activeField = currentTurn === 'A' ? fieldA : fieldB;
+            activeField.forEach(card => {
+                if (card.id === 11 && !isAbilityBlocked(currentTurn, 11)) {
+                    if (currentTurn === 'A') { hpA += 100; poisonA = 0; burnA = 0; }
+                    else { hpB += 100; poisonB = 0; burnB = 0; }
+                    activeField.forEach(ally => { ally.hanseibunTurns = 0; ally.videoTurns = 0; });
+                    endTurnMsg += `\n✨[木村]の効果発動！プレイヤーと先生の状態異常がすべて浄化されHPが100回復した！`;
+                }
+            });
             
             addLog(endTurnMsg); sendState(endTurnMsg); updateScreen(); checkGameOver();
         }
