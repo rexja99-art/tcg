@@ -220,7 +220,6 @@
             drawToFive('A'); drawToFive('B'); updateScreen();
         }
 
-        // ★ 墓地送りの際、カードの状態をリセットするが、破壊直前まで持っていた道連れ等の情報は事前に退避しておくこと！
         function sendToGraveyard(card, player) {
             let g = player === 'A' ? graveyardA : graveyardB;
             card.canAttack = false; card.hanseibunTurns = 0; card.videoTurns = 0; card.hasRevenge = false;
@@ -432,7 +431,8 @@
                 }
                 if (card.id === 109) {
                     logMsg += `\nトグルスイッチ作動！！大爆発で敵味方すべての先生に1000ダメージ！`;
-                    castTestSpell(1000, enemyField, tPlayer);
+                    // ★ 修正：確実に敵味方両方の陣地にダメージ処理を通す
+                    castTestSpell(1000, enemyField, amIHost ? 'B' : 'A');
                     castTestSpell(1000, currentField, amIHost ? 'A' : 'B');
                 }
 
@@ -533,14 +533,15 @@
             addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
         }
 
+        // ★ 呪文ダメージ判定（>= に修正済み）
         function castTestSpell(damage, targetField, targetPlayer) {
             const kakujiIndex = targetField.findIndex(c => c.id === 3);
             if (kakujiIndex !== -1) {
                 const kakuji = targetField[kakujiIndex]; const totalDmg = damage * targetField.length;
-                if (totalDmg > kakuji.dfn) { let d = targetField.splice(kakujiIndex, 1)[0]; sendToGraveyard(d, targetPlayer); }
+                if (totalDmg >= kakuji.dfn) { let d = targetField.splice(kakujiIndex, 1)[0]; sendToGraveyard(d, targetPlayer); }
             } else {
                 for (let i = targetField.length - 1; i >= 0; i--) {
-                    if (damage > targetField[i].dfn) {
+                    if (damage >= targetField[i].dfn) {
                         if (targetField[i].id === 7 && targetField[i].revivesLeft > 0) { targetField[i].revivesLeft--; }
                         else { let d = targetField.splice(i, 1)[0]; sendToGraveyard(d, targetPlayer); }
                     }
@@ -550,7 +551,6 @@
 
         function selectAttacker(idx) { if(!isMyTurn() || weaponMode) return; const pos = attackingCardIndexes.indexOf(idx); if (pos !== -1) attackingCardIndexes.splice(pos, 1); else attackingCardIndexes.push(idx); updateScreen(); }
 
-        // ★ 戦闘処理：道連れのバグを完全修正
         function fightCards(myCardIndexes, enemyCardIndex) {
             if(!isMyTurn()) return;
             const myField = amIHost ? fieldA : fieldB; const enemyField = amIHost ? fieldB : fieldA;
@@ -558,16 +558,17 @@
             let defender = enemyField[enemyCardIndex]; let actualEnemyIndex = enemyCardIndex;
             if (kakujiIndex !== -1 && defender.id !== 3) { actualEnemyIndex = kakujiIndex; defender = enemyField[kakujiIndex]; }
 
-            // ★ 墓地送りのリセット前に道連れフラグを退避！
-            let defenderRevenge = defender.hasRevenge;
-
             let totalAtk = 0; let attackerNames = [];
             myCardIndexes.forEach(idx => { totalAtk += myField[idx].atk; attackerNames.push(`[${myField[idx].name}]`); });
             let logMsg = `【${myName}】が ${attackerNames.join('+')} で [${defender.name}] に攻撃！`;
 
             let isDefenderDestroyed = false;
+            // ★ 道連れフラグを一時保存して確実に発動させる
+            let isRevengeActive = defender.hasRevenge;
+
             if (defender.id === 9) { logMsg += "\nしかし浅原は宙に浮いているため攻撃が当たらなかった！"; }
-            else if (totalAtk > defender.dfn) {
+            // ★ 戦闘ダメージ判定（>= に修正済み）
+            else if (totalAtk >= defender.dfn) {
                 if (defender.id === 7 && defender.revivesLeft > 0) { defender.revivesLeft--; defender.dfn = 300; }
                 else { 
                     let d = enemyField.splice(actualEnemyIndex, 1)[0]; 
@@ -580,9 +581,9 @@
                 logMsg += `\n[ジョージ]の「容赦ない一括」！攻撃した先生は反省文を書かされる！`;
             }
             
-            // ★ 退避したフラグで判定＆確実な配列操作で全員破壊
-            if (isDefenderDestroyed && defenderRevenge) {
+            if (isDefenderDestroyed && isRevengeActive) {
                 logMsg += `\n💥 [薄井の復讐] が発動！攻撃に参加したティーチャーは全員道連れにされた！`;
+                // 配列の後ろから削除してインデックスずれを防ぐ
                 let sortedIdxs = [...myCardIndexes].sort((a,b)=>b-a);
                 sortedIdxs.forEach(idx => {
                     if (myField[idx]) {
@@ -598,7 +599,6 @@
             addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
         }
 
-        // ★ ダイレクトアタックでのかくじぃ身代わり破壊時の道連れ対応
         function attackPlayerDirectly(myCardIndexes) {
             if(!isMyTurn()) return;
             const myField = amIHost ? fieldA : fieldB; const enemyField = amIHost ? fieldB : fieldA;
@@ -608,17 +608,18 @@
             let logMsg = `【${myName}】のダイレクトアタック！`;
             if (kakujiIndex !== -1) {
                 const kakuji = enemyField[kakujiIndex];
-                let kakujiRevenge = kakuji.hasRevenge; // ★ 退避
                 let isKakujiDestroyed = false;
+                let isRevengeActive = kakuji.hasRevenge;
 
-                if (totalAtk > kakuji.dfn) {
+                // ★ ダイレクトアタックのかくじぃ判定（>= に修正済み）
+                if (totalAtk >= kakuji.dfn) {
                     let d = enemyField.splice(kakujiIndex, 1)[0];
                     sendToGraveyard(d, amIHost ? 'B' : 'A');
                     isKakujiDestroyed = true;
                 }
                 logMsg += "\nしかし、かくじぃが身代わりになった！";
 
-                if (isKakujiDestroyed && kakujiRevenge) {
+                if (isKakujiDestroyed && isRevengeActive) {
                     logMsg += `\n💥 [薄井の復讐] が発動！身代わりの[かくじぃ]が攻撃者を全員道連れにした！`;
                     let sortedIdxs = [...myCardIndexes].sort((a,b)=>b-a);
                     sortedIdxs.forEach(idx => {
