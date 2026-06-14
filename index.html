@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>先生カードゲーム - オンライン対戦版</title>
+    <!-- 通信のためのライブラリを読み込み -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<style>
-        /* 全体の設定（横揺れ防止を追加） */
+    <style>
+        /* 全体の設定（横揺れ防止） */
         body { font-family: sans-serif; text-align: center; background: #f0f0f0; margin: 0; padding: 5px; user-select: none; font-size: 13px; overflow-x: hidden; }
         h1 { font-size: 18px; margin: 5px 0; }
         h3 { font-size: 13px; margin: 5px 0; }
@@ -14,14 +15,14 @@
         /* プレイヤーHP */
         .player-hp-box { background: white; padding: 5px 12px; border-radius: 6px; display: inline-block; margin: 3px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 3px solid transparent; transition: all 0.2s; font-weight: bold; font-size: 13px; }
         
-        /* フィールド（★ スマホ向けに「折り返し」を追加） */
+        /* フィールド（スマホ向けに折り返し） */
         .field { min-height: 160px; border: 2px dashed #999; margin: 6px auto; width: 95%; max-width: 600px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #fff; border-radius: 8px; padding: 6px; box-sizing: border-box; }
         .field > div { flex-wrap: wrap; justify-content: center; width: 100%; }
         
-        /* 手札（★ スマホ向けに「折り返し」を追加） */
+        /* 手札（スマホ向けに折り返し） */
         .hand { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 5px; min-height: 70px; width: 100%; padding-bottom: 5px; }
         
-        /* カードのサイズ（★ スマホに綺麗に3枚〜2枚で収まるように微調整） */
+        /* カードのサイズ */
         .card { width: 110px; height: 65px; background: skyblue; border: 2px solid #007bff; border-radius: 6px; display: flex; flex-direction: column; justify-content: space-between; padding: 4px; box-sizing: border-box; font-size: 9px; font-weight: bold; cursor: pointer; position: relative; transition: height 0.2s, box-shadow 0.2s; z-index: 1; margin-bottom: 2px; }
         .card:hover { height: 120px; background: #66b2ff; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #007bff; padding-bottom: 2px; }
@@ -29,7 +30,7 @@
         .card .card-stats { display: flex; gap: 2px; font-size: 8px; background: rgba(255,255,255,0.6); padding: 1px 3px; border-radius: 3px; }
         .card .card-atk { color: #d9534f; }
         .card .card-dfn { color: #0275d8; }
-        .card .card-ability { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 8px; color: #222; padding-top: 2px; line-height: 1.1; overflow: hidden; }
+        .card .card-ability { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 7.5px; color: #222; padding-top: 2px; line-height: 1.1; overflow: hidden; }
         .card .card-effect-detail { display: none; font-size: 7.5px; color: #333; background: #fff; border-radius: 3px; padding: 2px; margin-top: 3px; font-weight: normal; text-align: left; line-height: 1.2; }
         .card:hover .card-effect-detail { display: block; }
         
@@ -39,7 +40,7 @@
         @keyframes blink { 0% { opacity: 0.7; } 100% { opacity: 1; } }
         button.action-btn { padding: 6px 16px; font-size: 13px; margin-top: 5px; cursor: pointer; }
         
-        /* 接続画面のスタイル（★ はみ出さないように 90% に修正） */
+        /* 接続画面のスタイル */
         #setup-screen { background: white; padding: 15px; border-radius: 10px; max-width: 400px; width: 90%; margin: 50px auto; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .setup-btn { background: #007bff; color: white; border: none; padding: 10px 15px; font-size: 14px; border-radius: 4px; cursor: pointer; margin: 5px; width: 90%; max-width: 250px; }
         .setup-btn:hover { opacity: 0.8; }
@@ -47,6 +48,7 @@
 </head>
 <body>
 
+    <!-- オンライン接続画面 -->
     <div id="setup-screen">
         <h2>先生カードゲーム オンライン</h2>
         <button class="setup-btn" onclick="createRoom()">部屋を作る（先攻プレイヤーA）</button>
@@ -56,10 +58,18 @@
         <button class="setup-btn" id="join-btn" style="background: #28a745;" onclick="joinRoom()">部屋に入る（後攻プレイヤーB）</button>
     </div>
 
+    <!-- ゲーム画面 -->
     <div id="game-screen" style="display: none;">
         <h1>先生カードゲーム（オンライン対戦版）</h1>
         <div id="turn-indicator" style="font-size: 15px; font-weight: bold; margin: 5px; padding: 5px; border-radius: 5px;">接続待ち...</div>
         
+        <!-- 行動ログコンテナ -->
+        <div id="action-log-container" style="width: 95%; max-width: 600px; margin: 5px auto; background: #fff; border: 1px solid #ccc; border-radius: 5px; text-align: left; padding: 5px; box-sizing: border-box;">
+            <div style="font-size: 11px; font-weight: bold; border-bottom: 1px solid #ccc; margin-bottom: 3px; color: #555;">📖 行動ログ</div>
+            <div id="action-log" style="height: 70px; overflow-y: auto; font-size: 11.5px; color: #333; line-height: 1.4;"></div>
+        </div>
+
+        <!-- HP表示（初期値5000に変更） -->
         <div class="player-hp-box" id="hp-box-B">
             <strong>相手のHP: <span id="hp-b">5000</span> (手札: <span id="enemy-card-count">0</span>枚)</strong>
         </div>
@@ -76,7 +86,21 @@
 
     <script>
         // ==========================================
-        // 通信ロジック部分（Googleの超高速STUNサーバーを設定）
+        // 行動ログ追加関数
+        // ==========================================
+        function addLog(msg) {
+            if(!msg) return;
+            const logDiv = document.getElementById('action-log');
+            const entry = document.createElement('div');
+            entry.style.borderBottom = "1px dashed #eee";
+            entry.style.padding = "3px 0";
+            entry.innerHTML = "・" + msg.replace(/\n/g, '<br> ');
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // ==========================================
+        // 通信ロジック部分
         // ==========================================
         const PEER_CONFIG = {
             config: {
@@ -95,7 +119,6 @@
         function createRoom() {
             peer = new Peer(PEER_CONFIG);
             peer.on('open', (id) => {
-                // onclick="this.select()" を追加し、クリックするだけで全選択されるように改良
                 document.getElementById('room-id-output').innerHTML = `
                     あなたの部屋ID:<br>
                     <input type="text" id="my-room-id" value="${id}" readonly onclick="this.select()" style="padding: 8px; width: 85%; font-size: 14px; margin: 10px 0; text-align: center; border: 2px solid #28a745; border-radius: 4px; cursor: pointer;"><br>
@@ -115,13 +138,12 @@
         function copyRoomId() {
             const idField = document.getElementById("my-room-id");
             idField.select();
-            idField.setSelectionRange(0, 99999); // モバイル用対策
+            idField.setSelectionRange(0, 99999); 
             
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(idField.value).then(() => {
                     alert("部屋IDをコピーしました！\n友達に貼り付けて送ってください。");
                 }).catch(() => {
-                    // フォールバック
                     document.execCommand("copy");
                     alert("部屋IDをコピーしました！");
                 });
@@ -153,7 +175,6 @@
             peer.on('error', (err) => {
                 joinBtn.innerText = originalText;
                 joinBtn.disabled = false;
-                
                 if (err.type === 'peer-unavailable') {
                     alert("【接続エラー】\n部屋IDが見つかりません。\n相手が「部屋を作る」を押した画面のまま待っているか、もう一度IDを確認してください！");
                 } else {
@@ -165,6 +186,7 @@
         function setupConnection() {
             document.getElementById('setup-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'block';
+            addLog("通信が確立しました！ゲームスタート！");
             
             conn.on('data', (data) => {
                 hpA = data.hpA; hpB = data.hpB;
@@ -176,7 +198,10 @@
                 hasCastSpellThisTurn = data.hasCastSpellThisTurn;
                 philosophySpace = data.philosophySpace;
                 
-                if(data.alertMsg) alert(data.alertMsg); 
+                if(data.alertMsg) {
+                    addLog(data.alertMsg);
+                    alert(data.alertMsg);
+                }
                 updateScreen();
             });
         }
@@ -196,10 +221,11 @@
         }
 
         // ==========================================
-        // カードゲームデータ・進行ロジック（そのまま完全維持）
+        // カードゲームデータ・進行ロジック
         // ==========================================
         const CARD_LIST = [
-            { id: 1, type: "teacher", name: "長峰", atk: 200, dfn: 2000, rarity: 5, ability: "一回死んだほうがいんじゃないですかねぇwww", effect: "【召喚時】相手のフィールド上のティーチャーを４枚破壊する。" },
+            // ★長峰先生のアビリティ名を変更
+            { id: 1, type: "teacher", name: "長峰", atk: 200, dfn: 2000, rarity: 5, ability: "一回死んだほうがいんじゃないですかねぇww", effect: "【召喚時】相手のフィールド上のティーチャーを４枚破壊する。" },
             { id: 2, type: "teacher", name: "薄井", atk: 1000, dfn: 300, rarity: 5, ability: "つまはじき", effect: "【常時】自分のターン中1回、クリックで発動。お互いのHPを入れ替えるか、お互いのフィールドの先生を1体ずつ選んで入れ替える。" },
             { id: 3, type: "teacher", name: "かくじぃ", atk: 100, dfn: 1000, rarity: 5, ability: "みとけ！", effect: "【身代わり】この先生が場にいる限り、他の仲間への攻撃やプレイヤーへのダイレクトアタックをすべて代わりに受ける。" },
             { id: 4, type: "teacher", name: "おがぢ", atk: 300, dfn: 300, rarity: 4, ability: "哲学対話", effect: "【召喚時】１ターン相手のフィールド上のティーチャー全員と哲学対話状態にする。１ターン後に全員戻ってくる。" },
@@ -231,6 +257,7 @@
             return enemyField.some(c => c.id === 6);
         }
 
+        // ★HPの初期値を5000に調整
         let hpA = 5000; let hpB = 5000;
         let currentTurn = 'A';
         let handA = []; let handB = [];
@@ -243,6 +270,7 @@
         let philosophySpace = [];
 
         function initGame() {
+            // ★リセット時のHPも5000に調整
             hpA = 5000; hpB = 5000; currentTurn = 'A';
             deckA = getShuffledDeck(); deckB = getShuffledDeck();
             handA = []; handB = []; fieldA = []; fieldB = [];
@@ -260,7 +288,7 @@
             }
         }
 
-function updateScreen() {
+        function updateScreen() {
             if (amIHost) {
                 document.getElementById('hp-a').innerText = hpA;
                 document.getElementById('hp-b').innerText = hpB;
@@ -289,7 +317,6 @@ function updateScreen() {
                 fieldA.forEach((card, idx) => fADiv.appendChild(createFieldCardElement(card, 'A', idx)));
             } else {
                 fieldA.forEach((card, idx) => fBDiv.appendChild(createFieldCardElement(card, 'A', idx)));
-                // ★ここを fADiv（下の段）に修正しました！
                 fieldB.forEach((card, idx) => fADiv.appendChild(createFieldCardElement(card, 'B', idx)));
             }
             fieldDiv.appendChild(fBDiv); fieldDiv.appendChild(fADiv);
@@ -342,8 +369,10 @@ function updateScreen() {
                 }
             } else { 
                 cardEl.style.cursor = 'pointer';
-                if (card.hanseibunTurns > 0 || card.videoTurns > 0) {
-                    cardEl.onclick = () => alert("行動不能状態です。");
+                if (card.hanseibunTurns > 0) {
+                    cardEl.onclick = () => alert("「容赦ない一括」を受け、反省文を書いていて行動不能です！");
+                } else if (card.videoTurns > 0) {
+                    cardEl.onclick = () => alert("動画に夢中になっていて行動不能です！");
                 } else if (card.id === 2) {
                     cardEl.onclick = () => handleUsuiClick(index, card.canAttack);
                 } else if (card.canAttack) {
@@ -380,7 +409,7 @@ function updateScreen() {
                     if (card.id === 103) castTestSpell(700, targetField, tName);
                 }
                 currentHand.splice(cardIndex, 1); hasCastSpellThisTurn = true;
-                alert(logMsg); sendState(logMsg); updateScreen(); return;
+                addLog(logMsg); alert(logMsg); sendState(logMsg); updateScreen(); checkGameOver(); return;
             }
 
             if (hasSummonedTeacherThisTurn) return alert("先生は1ターン1枚までです");
@@ -404,7 +433,7 @@ function updateScreen() {
                     }
                     logMsg += "\n「哲学対話、しようか」お互いの場を全員連れ去った！";
                     currentHand.splice(cardIndex, 1); hasSummonedTeacherThisTurn = true;
-                    alert(logMsg); sendState(logMsg); updateScreen(); return;
+                    addLog(logMsg); alert(logMsg); sendState(logMsg); updateScreen(); checkGameOver(); return;
                 }
                 if (card.id === 12) {
                     if (enemyField.length > 0) {
@@ -431,7 +460,7 @@ function updateScreen() {
             }
             card.canAttack = false; currentField.push(card); currentHand.splice(cardIndex, 1);
             hasSummonedTeacherThisTurn = true;
-            alert(logMsg); sendState(logMsg); updateScreen();
+            addLog(logMsg); alert(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
         }
 
         function castTestSpell(damage, targetField, targetFieldName) {
@@ -467,10 +496,14 @@ function updateScreen() {
                 if (defender.id === 7 && defender.revivesLeft > 0) { defender.revivesLeft--; defender.dfn = 300; }
                 else { enemyField.splice(actualEnemyIndex, 1); }
             }
-            if (defender.id === 5) { myCardIndexes.forEach(idx => { myField[idx].hanseibunTurns = 2; }); }
+            if (defender.id === 5) { 
+                myCardIndexes.forEach(idx => { myField[idx].hanseibunTurns = 2; }); 
+                logMsg += `\n[ジョージ]の「容赦ない一括」！攻撃した先生は反省文を書かされる！`;
+            }
+            
             myCardIndexes.forEach(idx => { myField[idx].canAttack = false; });
             attackingCardIndexes = [];
-            alert(logMsg); sendState(logMsg); updateScreen();
+            addLog(logMsg); alert(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
         }
 
         function attackPlayerDirectly(myCardIndexes) {
@@ -489,7 +522,7 @@ function updateScreen() {
             }
             myCardIndexes.forEach(idx => { myField[idx].canAttack = false; });
             attackingCardIndexes = [];
-            alert(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
+            addLog(logMsg); alert(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
         }
 
         function handleUsuiClick(index, canAttack) {
@@ -500,7 +533,8 @@ function updateScreen() {
                 const opt = prompt("つまはじき効果：\n1: HP入れ替え\n2: 先生入れ替え");
                 if (opt === "1") {
                     let tmp = hpA; hpA = hpB; hpB = tmp; hasUsedUsuiThisTurn = true;
-                    sendState("薄井の効果でお互いのHPが入れ替わった！"); updateScreen();
+                    let msg = "薄井の「つまはじき」が発動！お互いのHPが入れ替わった！";
+                    addLog(msg); alert(msg); sendState(msg); updateScreen(); checkGameOver();
                 } else if (opt === "2") {
                     usuiMode = 'CHOOSE_MY_CARD'; document.getElementById('guidance-message').innerText = "自分の場から差し出す先生を選んでください。"; updateScreen();
                 }
@@ -530,11 +564,14 @@ function updateScreen() {
 
             myField.forEach(card => { if (card.hanseibunTurns > 0) card.hanseibunTurns--; if (card.videoTurns > 0) card.videoTurns--; });
 
+            let endTurnMsg = `【${amIHost?'プレイヤーA':'プレイヤーB'}】がターンを終了しました。`;
             myField.forEach(card => {
                 if (card.id === 8 && !isAbilityBlocked(currentTurn, 8) && enemyField.length > 0) {
                     let t = enemyField.filter(c => c.videoTurns === 0 && c.hanseibunTurns === 0);
                     if (t.length === 0) t = enemyField;
-                    t[Math.floor(Math.random() * t.length)].videoTurns = 1;
+                    let target = t[Math.floor(Math.random() * t.length)];
+                    target.videoTurns = 1;
+                    endTurnMsg += `\n[三谷]の効果発動！相手の[${target.name}]は動画に夢中になっている！`;
                 }
             });
 
@@ -544,15 +581,26 @@ function updateScreen() {
             hasSummonedTeacherThisTurn = false; hasCastSpellThisTurn = false; attackingCardIndexes = []; usuiMode = 'NONE'; hasUsedUsuiThisTurn = false;
             drawToFive(currentTurn);
             
-            sendState(`【${amIHost?'プレイヤーA':'プレイヤーB'}】がターンを終了しました。`);
-            updateScreen();
+            addLog(endTurnMsg); alert(endTurnMsg); sendState(endTurnMsg); updateScreen();
         }
 
+        // ★勝敗がはっきり分かるように勝利メッセージを強化
         function checkGameOver() {
             if (hpA <= 0 || hpB <= 0) {
-                alert("ゲーム終了！リセットします。");
-                initGame();
-                sendState();
+                let winnerStr = "";
+                if (hpA <= 0 && hpB <= 0) {
+                    winnerStr = "引き分け！";
+                } else if (hpA <= 0) {
+                    winnerStr = "プレイヤーBの勝利！";
+                } else if (hpB <= 0) {
+                    winnerStr = "プレイヤーAの勝利！";
+                }
+                
+                let msg = `🎉 決着がつきました 🎉\n【 ${winnerStr} 】\n\nゲームを初期状態にリセットします。`;
+                addLog(msg); 
+                alert(msg); 
+                initGame(); 
+                sendState(msg);
             }
         }
     </script>
