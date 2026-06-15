@@ -9,14 +9,18 @@
         body { font-family: sans-serif; text-align: center; background: #f0f0f0; margin: 0; padding: 5px; user-select: none; font-size: 13px; overflow-x: hidden; }
         h1 { font-size: 18px; margin: 5px 0; }
         h3 { font-size: 13px; margin: 5px 0; }
+        
         .player-hp-box { background: white; padding: 5px 12px; border-radius: 6px; display: inline-block; margin: 3px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 3px solid transparent; transition: all 0.2s; font-weight: bold; font-size: 13px; }
         .player-name { color: #007bff; font-size: 14px; margin-right: 5px; }
         .enemy-name { color: #d9534f; font-size: 14px; margin-right: 5px; }
+        
         .field { min-height: 110px; border: 2px dashed #999; margin: 5px auto; width: 95%; max-width: 600px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #fff; border-radius: 8px; padding: 6px; box-sizing: border-box; }
         #center-field { min-height: 85px; margin: 8px auto; width: 95%; max-width: 600px; display: flex; justify-content: center; align-items: center; background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 5px; box-sizing: border-box; box-shadow: inset 0 0 10px rgba(0,0,0,0.1); position: relative; cursor: pointer; }
         #center-field::before { content: "フィールド・建物エリア"; position: absolute; top: 2px; left: 5px; font-size: 9px; color: #856404; font-weight: bold; }
-        .hand { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 5px; min-height: 70px; width: 100%; padding-bottom: 5px; }
-        .card { width: 110px; height: 65px; background: skyblue; border: 2px solid #007bff; border-radius: 6px; display: flex; flex-direction: column; justify-content: space-between; padding: 4px; box-sizing: border-box; font-size: 9px; font-weight: bold; cursor: pointer; position: relative; transition: height 0.2s, box-shadow 0.2s; z-index: 1; margin-bottom: 2px; }
+        
+        .hand { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 15px; min-height: 80px; width: 100%; padding-bottom: 5px; }
+        
+        .card { width: 110px; height: 65px; background: skyblue; border: 2px solid #007bff; border-radius: 6px; display: flex; flex-direction: column; justify-content: space-between; padding: 4px; box-sizing: border-box; font-size: 9px; font-weight: bold; cursor: pointer; position: relative; transition: height 0.2s, box-shadow 0.2s, transform 0.2s; z-index: 1; margin-bottom: 2px; }
         .card:hover { height: 120px; background: #66b2ff; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #007bff; padding-bottom: 2px; }
         .card .card-name { font-size: 10.5px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 60px; }
@@ -27,20 +31,23 @@
         .card .card-effect-detail { display: none; font-size: 7.5px; color: #333; background: #fff; border-radius: 3px; padding: 2px; margin-top: 3px; font-weight: normal; text-align: left; line-height: 1.2; }
         .card:hover .card-effect-detail { display: block; }
         .card.selected-attacker { border: 3px solid #28a745 !important; box-shadow: 0 0 10px #28a745; animation: blink 1.2s infinite alternate; }
+        
         button.action-btn { padding: 8px 16px; font-size: 13px; margin-top: 5px; cursor: pointer; font-weight: bold; }
         #setup-screen { background: white; padding: 15px; border-radius: 10px; max-width: 400px; width: 90%; margin: 50px auto; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .setup-btn { background: #007bff; color: white; border: none; padding: 10px 15px; font-size: 14px; border-radius: 4px; cursor: pointer; margin: 5px; width: 90%; max-width: 250px; }
         .setup-btn:hover { opacity: 0.8; }
         .name-input { padding: 10px; width: 90%; max-width: 250px; font-size: 15px; text-align: center; border: 2px solid #ccc; border-radius: 5px; margin-bottom: 15px; font-weight: bold; }
+
         .patch-notes { text-align: left; background: #f8f9fa; border: 1px solid #ccc; padding: 10px; height: 120px; overflow-y: auto; font-size: 11px; margin-bottom: 10px; border-radius: 5px; line-height: 1.4; }
+        
         @keyframes blink { 0% { opacity: 0.7; } 100% { opacity: 1; } }
         @keyframes slashAnim { 0% { transform: translate(-50%, -50%) scale(0.5) rotate(-45deg); opacity: 0; } 50% { transform: translate(-50%, -50%) scale(1.5) rotate(-45deg); opacity: 1; filter: drop-shadow(0 0 10px white); } 100% { transform: translate(-50%, -50%) scale(2) rotate(-45deg); opacity: 0; } }
         @keyframes explodeAnim { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; filter: drop-shadow(0 0 10px red); } 50% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; filter: drop-shadow(0 0 20px orange); } 100% { transform: translate(-50%, -50%) scale(2); opacity: 0; } }
+        
         .damage-shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; background-color: #ffcccc !important; border-color: #dc3545 !important; }
         @keyframes shake { 10%, 90% { transform: translate3d(-2px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-8px, 0, 0); } 40%, 60% { transform: translate3d(8px, 0, 0); } }
         .version-badge { background: #dc3545; color: #fff; font-size: 12px; padding: 3px 8px; border-radius: 12px; vertical-align: middle; margin-left: 5px; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
         
-        /* カットインアニメーション */
         @keyframes cutinAnim { 0% { transform: translateX(-100%) skewX(-15deg); opacity: 0; } 15% { transform: translateX(0) skewX(-15deg); opacity: 1; } 85% { transform: translateX(0) skewX(-15deg); opacity: 1; } 100% { transform: translateX(100%) skewX(-15deg); opacity: 0; } }
         .cutin-box { position: fixed; top: 35%; left: 0; width: 100%; background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(220,53,69,0.9) 20%, rgba(220,53,69,0.9) 80%, rgba(0,0,0,0) 100%); color: white; z-index: 10000; padding: 15px 0; text-align: center; animation: cutinAnim 2.5s forwards; pointer-events: none; box-shadow: 0 10px 20px rgba(0,0,0,0.5); border-top: 2px solid #ffc107; border-bottom: 2px solid #ffc107; }
         .cutin-name { font-size: 26px; font-weight: 900; margin: 0 0 5px 0; color: #ffc107; text-shadow: 2px 2px 4px black; }
@@ -49,15 +56,17 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h2>先生カードゲーム <span class="version-badge">Ver 6.0</span></h2>
+        <h2>先生カードゲーム <span class="version-badge">Ver 8.0</span></h2>
+        
         <div class="patch-notes">
-            <strong>📢 Ver 6.0 アルティメット・アップデート</strong><br>
-            ・⚡️ <b>カットイン演出</b>：アビリティ発動時にキャラのド派手なカットインとセリフが挿入！<br>
-            ・🏫 <b>新建物＆カード大量追加</b>：白鳥寮（通常攻撃不可）、研究室（入室して守らせる）など！<br>
-            ・🪨 <b>新状態異常</b>：石化（自然治癒しない）、睡眠（殴ると起きる）。<br>
-            ・🎯 <b>対象選択機能</b>：薄井の復讐、けむくじゃらボールなどで対象を選べるようになりました。<br>
-            ・👁️ <b>浅原の千里眼</b>：ターン開始時、浅原がいれば相手の手札を覗き見できます。
+            <strong>📢 アップデート履歴 (Ver 8.0)</strong><br>
+            ・⚡️ <b>全先生にカットイン実装</b>：特殊構造によりコードを肥大化させず全先生のセリフ演出を完全網羅！<br>
+            ・🧹 <b>「掃除」のタップ選択化</b>：手札の不要カードを画面タップで直感的に削除できるよう変更。<br>
+            ・🚶 <b>加藤先生の弱体化</b>：戦場滞在を2ターン、離脱（徘徊）を2ターンに倍増させ攻撃の隙を創出。<br>
+            ・✨ <b>新カード追加</b>：田辺先生（全体死の宣告3T）、プッシュスイッチ（敵味方全体500ダメージ）。<br>
+            ・⚙️ <b>処理の安定化</b>：トグルスイッチやプッシュスイッチの敵味方全体爆発処理を徹底修正。
         </div>
+
         <input type="text" id="player-name-input" class="name-input" placeholder="あなたの名前を入力" value="ゲスト">
         <br>
         <button class="setup-btn" onclick="attemptCreateRoom()">部屋を作る（先攻）</button>
@@ -81,7 +90,10 @@
         <div id="center-field" onclick="handleCenterFieldClick()"></div>
         <div class="field" id="field-A"></div>
         <div id="guidance-message" style="color: #dc3545; font-weight: bold; margin: 2px 0; min-height: 15px;"></div>
+        
+        <h3>手札（1回タップで選択 → もう1回で発動！）</h3>
         <div class="hand" id="hand"></div>
+        
         <div class="player-hp-box" id="hp-box-A" data-mode="self">
             <span class="player-name" id="display-my-name">あなた</span>
             <strong>HP: <span id="hp-a">5000</span></strong>
@@ -148,7 +160,9 @@
             document.getElementById('setup-screen').style.display = 'none'; document.getElementById('game-screen').style.display = 'block'; addLog(`通信が確立しました！ゲームスタート！`);
             conn.on('data', (data) => {
                 if (data.type === 'hurry') { alert(data.msg); addLog(data.msg); return; }
-                if (data.type === 'surrender') { addLog(data.msg); alert(data.msg); if (amIHost) hpB = 0; else hpA = 0; updateScreen(); checkGameOver(); return; }
+                if (data.type === 'surrender') {
+                    addLog(data.msg); alert(data.msg); if (amIHost) hpB = 0; else hpA = 0; updateScreen(); checkGameOver(); return;
+                }
                 if (data.type === 'cutin') { triggerCutin(data.name, data.text); return; }
 
                 hpA = data.hpA; hpB = data.hpB; fieldA = data.fieldA; fieldB = data.fieldB; handA = data.handA; handB = data.handB; deckA = data.deckA; deckB = data.deckB;
@@ -179,24 +193,27 @@
         // カードゲームデータ
         // ==========================================
         const CARD_LIST = [
-            { id: 1, type: "teacher", name: "長峰", atk: 200, dfn: 2000, rarity: 5, ability: "一回死んだほうがいんじゃないですかねぇww", effect: "【召喚時】相手のフィールド上のティーチャーを４枚破壊する。" },
-            { id: 2, type: "teacher", name: "薄井", atk: 1000, dfn: 300, rarity: 5, ability: "つまはじき", effect: "【召喚時】相手の先生に左から2000ダメージ。余ったら建物も攻撃。" },
-            { id: 3, type: "teacher", name: "かくじぃ", atk: 100, dfn: 1000, rarity: 5, ability: "みとけ！", effect: "【身代わり】他の仲間への攻撃やダイレクトアタックをすべて代わりに受ける。" },
-            { id: 4, type: "teacher", name: "おがぢ", atk: 300, dfn: 300, rarity: 4, ability: "哲学対話", effect: "【召喚時】１ターン相手のティーチャー全員と哲学対話状態にする。" },
-            { id: 5, type: "teacher", name: "ジョージ", atk: 700, dfn: 700, rarity: 5, ability: "諸君ら", effect: "【常時】自身に攻撃したティーチャーには反省文を書かせる。" },
-            { id: 6, type: "teacher", name: "シドウェル", atk: 100, dfn: 300, rarity: 5, ability: "タメデス", effect: "【常時】相手のアビリティを無効化（※呪文には効果なし）。" },
-            { id: 7, type: "teacher", name: "しげよし", atk: 300, dfn: 300, rarity: 3, ability: "再再再試", effect: "【常時】戦闘や能力による破壊を3回まで無効化して耐える。" },
-            { id: 8, type: "teacher", name: "三谷", atk: 200, dfn: 200, rarity: 3, ability: "動画みといてね～", effect: "【自動】毎ターン終了時、相手のランダムな先生1体を動画視聴状態にする。" },
-            { id: 9, type: "teacher", name: "浅原", atk: 10, dfn: 10, rarity: 1, ability: "尊師", effect: "【常時】宙に浮き通常攻撃無効。ターン開始時、千里眼で相手の手札を覗き見る。" },
-            { id: 10, type: "teacher", name: "白戸", atk: 400, dfn: 800, rarity: 2, ability: "次スマホ触ったら取り上げます", effect: "実際に取り上げられることはない。（アビリティなし）" },
-            { id: 11, type: "teacher", name: "木村", atk: 100, dfn: 400, rarity: 2, ability: "にこにこにこにこ", effect: "【自動】毎ターン開始時、プレイヤーのHP100回復＆状態異常をすべて浄化。" },
-            { id: 12, type: "teacher", name: "福地", atk: 100, dfn: 100, rarity: 1, ability: "be good lose", effect: "【召喚時】相手のランダムなティーチャー1体のステータスを「74」にする。" },
-            { id: 13, type: "teacher", name: "畑村", atk: 500, dfn: 200, rarity: 5, ability: "しまえ！", effect: "【召喚時】相手のフィールド上の星4以下のティーチャーをすべて手札に戻す。" },
-            { id: 14, type: "teacher", name: "服部", atk: 300, dfn: 100, rarity: 4, ability: "私物狩り", effect: "【召喚時】相手のフィールドのランダムな先生を1体奪い取る。" },
-            { id: 15, type: "teacher", name: "赤迫", atk: 600, dfn: 100, rarity: 3, ability: "はいあうとー", effect: "【常時】相手が呪文を発動した時、その効果を跳ね返す。" },
-            { id: 16, type: "teacher", name: "内堀", atk: 300, dfn: 400, rarity: 4, ability: "魂の選択", effect: "【召喚時】倒された味方のティーチャーをランダムに1体復活させる。" },
-            { id: 17, type: "teacher", name: "岡田", atk: 300, dfn: 400, rarity: 3, ability: "グループワーク", effect: "【召喚時】相手先生に3人組を作らせ、余った人数分ランダムに寂しくなって自害する。" },
-            { id: 18, type: "teacher", name: "加藤", atk: 500, dfn: 100, rarity: 2, ability: "徘徊", effect: "【自動】毎ターン終了時、戦線離脱と参戦を繰り返す。" },
+            // ★ 各先生に cutin プロパティを配備
+            { id: 1, type: "teacher", name: "長峰", atk: 200, dfn: 2000, rarity: 5, ability: "一回死んだほうがいんじゃないですかねぇww", cutin: "一回死んだほうがいんじゃないですかねぇww", effect: "【召喚時】相手のフィールド上のティーチャーを４枚破壊する。" },
+            { id: 2, type: "teacher", name: "薄井", atk: 1000, dfn: 300, rarity: 5, ability: "つまはじき", cutin: "お前をつまはじきにしてやる。", effect: "【召喚時】相手の先生に左から2000ダメージ。余ったら建物も攻撃。" },
+            { id: 3, type: "teacher", name: "かくじぃ", atk: 100, dfn: 1000, rarity: 5, ability: "みとけ！", cutin: "みとけ！ワシの生き様を！", effect: "【身代わり】他の仲間への攻撃やダイレクトアタックをすべて代わりに受ける。" },
+            { id: 4, type: "teacher", name: "おがぢ", atk: 300, dfn: 300, rarity: 4, ability: "哲学対話", cutin: "哲学対話、しようか。", effect: "【召喚時】１ターン相手のティーチャー全員と哲学対話状態にする。" },
+            { id: 5, type: "teacher", name: "ジョージ", atk: 700, dfn: 700, rarity: 5, ability: "諸君ら", cutin: "そこに座りなさい。", effect: "【常時】自身に攻撃したティーチャーには反省文を書かせる。" },
+            { id: 6, type: "teacher", name: "シドウェル", atk: 100, dfn: 300, rarity: 5, ability: "タメデス", cutin: "タメデス！規律を守りなさい。", effect: "【常時】相手のアビリティを無効化（※呪文には効果なし）。" },
+            { id: 7, type: "teacher", name: "しげよし", atk: 300, dfn: 300, rarity: 3, ability: "再再再試", cutin: "再再再試だ！諦めんな！", effect: "【常時】戦闘や能力による破壊を3回まで無効化して耐える。" },
+            { id: 8, type: "teacher", name: "三谷", atk: 200, dfn: 200, rarity: 3, ability: "動画みといてね～", cutin: "動画みといてね〜。", effect: "【自動】毎ターン終了時、相手のランダムな先生1体を動画視聴状態にする。" },
+            { id: 9, type: "teacher", name: "浅原", atk: 10, dfn: 10, rarity: 1, ability: "尊師", cutin: "私には全て視えている。", effect: "【常時】宙に浮き通常攻撃無効。ターン開始時、千里眼で相手の手札を覗き見る。" },
+            { id: 10, type: "teacher", name: "白戸", atk: 400, dfn: 800, rarity: 2, ability: "次スマホ触ったら取り上げます", cutin: "次スマホ触っていたら取り上げますよ。", effect: "実際に取り上げられることはない。（アビリティなし）" },
+            { id: 11, type: "teacher", name: "木村", atk: 100, dfn: 400, rarity: 2, ability: "にこにこにこにこ", cutin: "にこにこにこにこ、元気を出して！", effect: "【自動】毎ターン開始時、プレイヤーのHP100回復＆状態異常をすべて浄化。" },
+            { id: 12, type: "teacher", name: "福地", atk: 100, dfn: 100, rarity: 1, ability: "be good lose", cutin: "be good lose！いい負け方をしよう。", effect: "【召喚時】相手のランダムなティーチャー1体のステータスを「74」にする。" },
+            { id: 13, type: "teacher", name: "畑村", atk: 500, dfn: 200, rarity: 5, ability: "しまえ！", cutin: "しまえ！荷物を全部片付けなさい！", effect: "【召喚時】相手のフィールド上の星4以下のティーチャーをすべて手札に戻る。" },
+            { id: 14, type: "teacher", name: "服部", atk: 300, dfn: 100, rarity: 4, ability: "私物狩り", cutin: "私物狩りの時間です。", effect: "【召喚時】相手のフィールドのランダムな先生を1体奪い取る。" },
+            { id: 15, type: "teacher", name: "赤迫", atk: 600, dfn: 100, rarity: 3, ability: "はいあうとー", cutin: "はいあうとー！", effect: "【常時】相手が呪文を発動した時、その効果を跳ね返す。" },
+            { id: 16, type: "teacher", name: "内堀", atk: 300, dfn: 400, rarity: 4, ability: "魂の選択", cutin: "魂の選択…生き返るが良い。", effect: "【召喚時】倒された味方のティーチャーをランダムに1体復活させる。" },
+            { id: 17, type: "teacher", name: "岡田", atk: 300, dfn: 400, rarity: 3, ability: "グループワーク", cutin: "岡田のグループワークを始めます。", effect: "【召喚時】相手先生に3人組を作らせ、余った人数分ランダムに寂しくなって自害する。" },
+            { id: 18, type: "teacher", name: "加藤", atk: 500, dfn: 100, rarity: 2, ability: "徘徊", cutin: "ちょっとそこまで徘徊してきます。", effect: "【自動】徘徊周期が2倍に変更。2ターン戦線に出て、2ターン離脱する。" },
+            // ★ 新先生：田辺先生
+            { id: 19, type: "teacher", name: "田辺先生", atk: 400, dfn: 400, rarity: 5, ability: "ラーメン大麻", cutin: "ラーメン大麻！ガッツリ食べなさい！", effect: "【召喚時】相手のフィールド上のすべてのティーチャーに死の宣告3ターンを付与する。" },
             
             { id: 101, type: "spell", name: "小テスト", atk: "-", dfn: "-", rarity: 1, ability: "呪文カード", effect: "相手のすべてのティーチャーと建物に100ダメージ。" },
             { id: 102, type: "spell", name: "中間テスト", atk: "-", dfn: "-", rarity: 3, ability: "呪文カード", effect: "相手のすべてに300ダメージ。" },
@@ -208,21 +225,24 @@
             { id: 108, type: "spell", name: "ハンダごて", atk: "-", dfn: "-", rarity: 2, ability: "呪文カード", effect: "相手を「やけど」状態にする（進化: やけど100→大やけど200→超やけど300）。" },
             { id: 109, type: "spell", name: "トグルスイッチ", atk: "-", dfn: "-", rarity: 4, ability: "呪文カード", effect: "トグルスイッチ作動で大爆発。敵味方すべての先生と建物に1000ダメージ。" },
             { id: 110, type: "spell", name: "学生課", atk: "-", dfn: "-", rarity: 5, ability: "呪文カード", effect: "フィールド上の敵味方すべてのティーチャーが死亡する。" },
-            { id: 111, type: "spell", name: "掃除", atk: "-", dfn: "-", rarity: 1, ability: "呪文カード", effect: "手札の不要なカードを1枚削除することができる。" },
-            { id: 112, type: "spell", name: "クラスマッチ", atk: "-", dfn: "-", rarity: 3, ability: "呪文カード", effect: "相手ティーチャー全員を1ターンの間「睡眠（攻撃で起きる）」状態にする。" },
+            { id: 111, type: "spell", name: "掃除", atk: "-", dfn: "-", rarity: 1, ability: "呪文カード", effect: "手札から不要なカードをタップ選択で1枚削除できる。" },
+            { id: 112, type: "spell", name: "クラスマッチ", atk: "-", dfn: "-", rarity: 3, ability: "呪文カード", effect: "相手ティーチャー全員を1ターンの間「睡眠」状態にする。" },
             { id: 113, type: "spell", name: "高専祭", atk: "-", dfn: "-", rarity: 5, ability: "呪文カード", effect: "敵味方すべてのティーチャーを2ターンの間「睡眠」状態にする。" },
             { id: 114, type: "spell", name: "薄井の読書感想", atk: "-", dfn: "-", rarity: 5, ability: "呪文カード", effect: "「薄井」を呼び出し、効果を発動する。" },
             { id: 115, type: "spell", name: "けむくじゃらボール", atk: "-", dfn: "-", rarity: 3, ability: "呪文カード", effect: "味方1人を選択。ボールを持つ人しか攻撃できなくなる（3ターンで消滅）。" },
+            { id: 116, type: "spell", name: "7セグメントLED", atk: "-", dfn: "-", rarity: 4, ability: "呪文カード", effect: "相手ティーチャー全員に0〜9ターンの「死の宣告」を付与。" },
+            // ★ 新呪文：プッシュスイッチ
+            { id: 117, type: "spell", name: "プッシュスイッチ", atk: "-", dfn: "-", rarity: 1, ability: "呪文カード", effect: "プッシュスイッチオン。敵味方すべての先生と建物に500ダメージ。" },
             
             { id: 201, type: "weapon", name: "ブレッドボード", atk: "+100", dfn: "-", rarity: 1, ability: "武器カード", effect: "味方に装備し攻撃力+100。" },
-            { id: 202, type: "weapon", name: "DMM", atk: "+200", dfn: "-", rarity: 2, ability: "武器カード", effect: "味方に装備し攻撃力+200。" },
+            { id: 202, type: "weapon", name: "デジタルマルチメータ", atk: "+200", dfn: "-", rarity: 2, ability: "武器カード", effect: "味方に装備し攻撃力+200。" },
             { id: 203, type: "weapon", name: "オシロスコープ", atk: "+400", dfn: "-", rarity: 4, ability: "武器カード", effect: "味方に装備し攻撃力+400。" },
             
             { id: 301, type: "building", name: "図書館", atk: "-", dfn: 500, rarity: 3, ability: "建物カード", effect: "【常時】敵味方すべてのティーチャーを「沈黙（アビリティ無効）」にする。" },
             { id: 302, type: "building", name: "保健室", atk: "-", dfn: 500, rarity: 3, ability: "建物カード", effect: "【常時】敵味方すべてのプレイヤーと先生への状態異常を無効化する。" },
             { id: 303, type: "building", name: "ものづくり工房", atk: "-", dfn: 500, rarity: 3, ability: "建物カード", effect: "【自動】毎ターン開始時、ランダムな先生に武器を自動装備させる。" },
             { id: 304, type: "building", name: "売店", atk: "-", dfn: 500, rarity: 2, ability: "建物カード", effect: "【起動】各ターン1回、手札の先生を売却してレア度に応じたアイテムを使用。" },
-            { id: 305, type: "building", name: "開かずの部屋", atk: "-", dfn: 500, rarity: 4, ability: "建物カード", effect: "【自動】毎ターン終了時ランダムに1人吸い込む。破壊されると全員戻る。" },
+            { id: 305, type: "building", name: "かくじぃの開かずの部屋", atk: "-", dfn: 500, rarity: 4, ability: "建物カード", effect: "【自動】毎ターン終了時ランダムに1人吸い込む。破壊されると全員戻る。" },
             { id: 306, type: "building", name: "視聴覚室", atk: "-", dfn: 500, rarity: 1, ability: "建物カード", effect: "特に効果はない。盾になる。" },
             { id: 307, type: "building", name: "合同講義室", atk: "-", dfn: 700, rarity: 2, ability: "建物カード", effect: "特に効果はない。盾になる。" },
             { id: 308, type: "building", name: "マルチメディア室", atk: "-", dfn: 1000, rarity: 4, ability: "建物カード", effect: "特に効果はない。強固な盾。" },
@@ -232,13 +252,14 @@
         ];
 
         const EXTRA_TEACHERS = [
-            { id: 401, type: "teacher", name: "石尾", atk: 100, dfn: 100, rarity: 2, ability: "石尾", effect: "【召喚時】相手のランダムな先生1体を石化（行動不可・自然治癒なし）させる。" },
-            { id: 402, type: "teacher", name: "小泉", atk: 100, dfn: 100, rarity: 1, ability: "-", effect: "能力なし" },
-            { id: 403, type: "teacher", name: "伊藤こ", atk: 100, dfn: 100, rarity: 1, ability: "-", effect: "能力なし" }
+            { id: 401, type: "teacher", name: "石尾", atk: 100, dfn: 100, rarity: 2, ability: "石尾", cutin: "石尾！カチコチにしてやろう。", effect: "【召喚時】相手のランダムな先生1体を石化（自然治癒なし）させる。" },
+            { id: 402, type: "teacher", name: "小泉", atk: 100, dfn: 100, rarity: 1, ability: "-", cutin: "", effect: "能力なし" },
+            { id: 403, type: "teacher", name: "伊藤こ", atk: 100, dfn: 100, rarity: 1, ability: "-", cutin: "", effect: "能力なし" }
         ];
 
         function getShuffledDeck() {
-            return [...CARD_LIST].filter(c=>c.id < 400).map(c => ({ ...c, canAttack: false, hanseibunTurns: 0, videoTurns: 0, silenceTurns: 0, sleepTurns: 0, ballTurns: 0, isPetrified: false, inLab: false, justReturned: false, revivesLeft: (c.id === 7) ? 3 : 0, hasRevenge: false })).sort(() => Math.random() - 0.5);
+            // ★ 加藤の滞在ターン用 fieldTurns: 2 を全カードに初期化
+            return [...CARD_LIST].filter(c=>c.id < 400).map(c => ({ ...c, canAttack: false, hanseibunTurns: 0, videoTurns: 0, silenceTurns: 0, sleepTurns: 0, ballTurns: 0, deathSentenceTurns: -1, fieldTurns: 2, isPetrified: false, inLab: false, justReturned: false, revivesLeft: (c.id === 7) ? 3 : 0, hasRevenge: false })).sort(() => Math.random() - 0.5);
         }
 
         function isLibraryActive() { return buildingStack.length > 0 && buildingStack[buildingStack.length - 1].id === 301; }
@@ -258,7 +279,7 @@
         let hasSummonedTeacherThisTurn = false; let hasCastSpellThisTurn = false; let hasEquippedWeaponThisTurn = false; let hasSummonedBuildingThisTurn = false; let hasUsedBaitenThisTurn = false;
         let attackingCardIndexes = []; let philosophySpace = []; let wanderSpace = []; let akazuSpace = []; window.autoTurnEndTimer = null; 
         let poisonA = 0; let poisonB = 0; let burnA = 0; let burnB = 0; let graveyardA = []; let graveyardB = [];
-        let selectionMode = null; let selectedCardIndex = null; // 'weapon', 'spell_107', 'spell_115', 'lab'
+        let selectionMode = null; let selectedCardIndex = null; let readyToPlayIndex = null; // 'weapon', 'spell_107', 'spell_115', 'lab', 'clean'
 
         function initGame() {
             hpA = 5000; hpB = 5000; prevHpA = 5000; prevHpB = 5000; currentTurn = 'A';
@@ -266,20 +287,20 @@
             hasSummonedTeacherThisTurn = false; hasCastSpellThisTurn = false; hasEquippedWeaponThisTurn = false; hasSummonedBuildingThisTurn = false; hasUsedBaitenThisTurn = false;
             attackingCardIndexes = []; philosophySpace = []; wanderSpace = []; akazuSpace = [];
             poisonA = 0; poisonB = 0; burnA = 0; burnB = 0; graveyardA = []; graveyardB = [];
-            selectionMode = null; selectedCardIndex = null; hurryCount = 0;
+            selectionMode = null; selectedCardIndex = null; readyToPlayIndex = null; hurryCount = 0;
             if(window.autoTurnEndTimer) { clearTimeout(window.autoTurnEndTimer); window.autoTurnEndTimer = null; }
-            drawToFive('A'); drawToFive('B'); updateScreen();
+            drawHand('A'); drawHand('B'); updateScreen();
         }
 
         function sendToGraveyard(card, player) {
             let g = player === 'A' ? graveyardA : graveyardB;
-            card.canAttack = false; card.hanseibunTurns = 0; card.videoTurns = 0; card.silenceTurns = 0; card.sleepTurns = 0; card.ballTurns = 0; card.isPetrified = false; card.inLab = false; card.hasRevenge = false;
+            card.canAttack = false; card.hanseibunTurns = 0; card.videoTurns = 0; card.silenceTurns = 0; card.sleepTurns = 0; card.ballTurns = 0; card.deathSentenceTurns = -1; card.fieldTurns = 2; card.isPetrified = false; card.inLab = false; card.hasRevenge = false;
             if (card.id === 7) card.revivesLeft = 3; g.push(card);
         }
 
-        function drawToFive(player) {
+        function drawHand(player) {
             let hand = (player === 'A' ? handA : handB); let deck = (player === 'A' ? deckA : deckB); let attempts = 0; 
-            while (hand.length < 5) {
+            while (hand.length < 6) {
                 if (deck.length === 0) deck.push(...getShuffledDeck());
                 let nextCard = deck[0];
                 let hasSpell = hand.some(c => c.type === 'spell'); let hasWeapon = hand.some(c => c.type === 'weapon'); let hasBuilding = hand.some(c => c.type === 'building');
@@ -321,7 +342,7 @@
             const fADiv = document.createElement('div'); fADiv.style.display = 'flex'; fADiv.style.gap = '10px'; fADiv.style.justifyContent = 'center'; fADiv.style.flexWrap = 'wrap';
 
             if (amIHost) { fieldB.forEach((card, idx) => fBDiv.appendChild(createFieldCardElement(card, 'B', idx))); fieldA.forEach((card, idx) => fADiv.appendChild(createFieldCardElement(card, 'A', idx)));
-            } else { fieldA.forEach((card, idx) => fBDiv.appendChild(createFieldCardElement(card, 'A', idx))); fieldB.forEach((card, idx) => fADiv.appendChild(createFieldCardElement(card, 'B', idx))); }
+            } else { fieldA.forEach((card, idx) => fBDiv.appendChild(createFieldCardElement(card, 'A', idx))); fieldB.forEach((card, idx) => fBDiv.appendChild(createFieldCardElement(card, 'B', idx))); }
             fieldBDiv.appendChild(fBDiv); fieldADiv.appendChild(fADiv);
 
             if (buildingStack.length > 0) {
@@ -329,30 +350,59 @@
                 let buildEl = createCardElement(topBuilding);
                 buildEl.id = 'center-building'; buildEl.dataset.mode = 'building'; buildEl.style.background = '#fff3cd'; buildEl.style.borderColor = '#d39e00';
                 
-                // 研究室の入室者表示
                 let residents = [...fieldA, ...fieldB].filter(c => c.inLab);
                 if (topBuilding.id === 311 && residents.length > 0) {
                     let rNames = residents.map(c=>c.name).join(',');
                     let resLabel = document.createElement('div'); resLabel.innerHTML = `🧪[${rNames}]が研究中`; resLabel.style.color = '#007bff'; resLabel.style.fontSize='10px'; resLabel.style.fontWeight='bold';
                     buildEl.appendChild(resLabel);
                 }
-
                 if (attackingCardIndexes.length > 0 && isMyTurn() && !selectionMode) { buildEl.style.boxShadow = '0 0 10px #dc3545'; }
                 centerDiv.appendChild(buildEl);
             }
 
-            const hpBoxA = document.getElementById('hp-box-A'); const hpBoxB = document.getElementById('hp-box-B');
-            hpBoxA.onclick = null; hpBoxA.style.borderColor = 'transparent'; hpBoxB.onclick = null; hpBoxB.style.borderColor = 'transparent';
-
             const handDiv = document.getElementById('hand'); handDiv.innerHTML = '';
             const myHand = amIHost ? handA : handB;
+            const currentHand = myHand;
+            
+            // ★ 手札ループの処理構造（掃除モード／通常モードの分離）
             myHand.forEach((card, idx) => {
-                const cardEl = createCardElement(card);
-                if (isMyTurn()) { 
-                    cardEl.onclick = () => { summonCard(idx); }; 
-                    if (selectionMode && idx === selectedCardIndex) cardEl.style.boxShadow = '0 0 10px #28a745';
-                } else { cardEl.style.opacity = '0.5'; cardEl.style.cursor = 'default'; }
-                handDiv.appendChild(cardEl);
+                if (selectionMode === 'clean') {
+                    // ★ 掃除モード：削除したいカードを直感的にタップ選択
+                    const cardEl = createCardElement(card);
+                    if (idx === selectedCardIndex) {
+                        cardEl.style.opacity = '0.5'; 
+                        cardEl.onclick = () => { selectionMode = null; selectedCardIndex = null; document.getElementById('guidance-message').innerText = ""; updateScreen(); };
+                    } else {
+                        cardEl.style.boxShadow = '0 0 15px #dc3545';
+                        cardEl.onclick = () => {
+                            let discarded = currentHand.splice(idx, 1)[0];
+                            let cleanIdx = currentHand.indexOf(myHand[selectedCardIndex]);
+                            let cleanCard = currentHand.splice(cleanIdx, 1)[0];
+                            let logMsg = `【${myName}】が「掃除」を発動！手札から不要な [${discarded.name}] を削除した！`;
+                            sendToGraveyard(discarded, amIHost ? 'A' : 'B'); sendToGraveyard(cleanCard, amIHost ? 'A' : 'B');
+                            hasCastSpellThisTurn = true; selectionMode = null; selectedCardIndex = null; document.getElementById('guidance-message').innerText = "";
+                            addLog(logMsg); sendState(logMsg); updateScreen();
+                        };
+                    }
+                    handDiv.appendChild(cardEl);
+                } else {
+                    // 通常の2タップ仕様
+                    const cardEl = createCardElement(card);
+                    if (isMyTurn()) { 
+                        if (selectionMode) {
+                            cardEl.onclick = () => { summonCard(idx); }; 
+                            if (idx === selectedCardIndex) cardEl.style.boxShadow = '0 0 10px #28a745';
+                        } else {
+                            if (readyToPlayIndex === idx) {
+                                cardEl.style.boxShadow = '0 0 15px #ffc107'; cardEl.style.transform = 'translateY(-10px)';
+                                cardEl.onclick = () => { summonCard(idx); };
+                            } else {
+                                cardEl.onclick = () => { readyToPlayIndex = idx; updateScreen(); };
+                            }
+                        }
+                    } else { cardEl.style.opacity = '0.5'; cardEl.style.cursor = 'default'; }
+                    handDiv.appendChild(cardEl);
+                }
             });
 
             if (isMyTurn() && hpA > 0 && hpB > 0) {
@@ -362,142 +412,10 @@
                 const canBuild = !hasSummonedBuildingThisTurn && myHand.some(c => c.type === 'building');
                 const canAttack = myField.some(c => c.canAttack) || attackingCardIndexes.length > 0;
 
-                if (!canSummon && !canSpell && !canEquip && !canBuild && !canAttack && !selectionMode) {
+                if (!canSummon && !canSpell && !canEquip && !canBuild && !canAttack && !selectionMode && readyToPlayIndex === null) {
                     if (!window.autoTurnEndTimer) window.autoTurnEndTimer = setTimeout(() => { addLog("可能な行動がないため、自動でターンを終了します。"); triggerNextTurn(); window.autoTurnEndTimer = null; }, 1500);
                 } else { if (window.autoTurnEndTimer) { clearTimeout(window.autoTurnEndTimer); window.autoTurnEndTimer = null; } }
             }
-        }
-
-        function createCardElement(card) {
-            const cardEl = document.createElement('div'); cardEl.className = 'card';
-            if (card.type === 'spell') { cardEl.style.background = '#e2d9f3'; cardEl.style.borderColor = '#6f42c1'; }
-            else if (card.type === 'weapon') { cardEl.style.background = '#d4edda'; cardEl.style.borderColor = '#28a745'; }
-            else if (card.type === 'building') { cardEl.style.background = '#fff3cd'; cardEl.style.borderColor = '#ffc107'; }
-            
-            let abilityText = `<div>${card.ability}</div>`;
-            if (card.hanseibunTurns > 0) abilityText = `<div style="color: #dc3545;">📄反省文<br>あと ${card.hanseibunTurns}T</div>`;
-            else if (card.videoTurns > 0) abilityText = `<div style="color: #007bff;">📺動画視聴<br>あと ${card.videoTurns}T</div>`;
-            else if (card.sleepTurns > 0) abilityText = `<div style="color: #6f42c1;">💤睡眠<br>あと ${card.sleepTurns}T</div>`;
-            else if (card.isPetrified) abilityText = `<div style="color: #6c757d;">🗿石化</div>`;
-            else if (card.silenceTurns > 0 || isLibraryActive()) abilityText = `<div style="color: #6c757d;">😶沈黙</div>`;
-            else if (card.id === 7 && card.revivesLeft > 0) abilityText += `<div style="color: #28a745;">❤️耐性: ${card.revivesLeft}回</div>`;
-            
-            if (card.hasRevenge) abilityText += `<div style="color: #8b0000; font-weight:bold; margin-top:2px;">🔥道連れ🔥</div>`;
-            if (card.ballTurns > 0) abilityText += `<div style="color: #d35400; font-weight:bold; margin-top:2px;">🏀ボール: ${card.ballTurns}T</div>`;
-            if (card.inLab) abilityText += `<div style="color: #007bff; font-weight:bold; margin-top:2px;">🧪研究中</div>`;
-
-            const stars = '★'.repeat(card.rarity); let statsHtml = '';
-            if (card.type === 'spell') statsHtml = `<span style="color:#6f42c1;">◆呪文</span>`;
-            else if (card.type === 'weapon') statsHtml = `<span style="color:#28a745;">⚔️武器</span>`;
-            else if (card.type === 'building') statsHtml = `<span style="color:#ffc107;">🏛️建物</span> <span style="color:#0275d8;">HP${card.dfn}</span>`;
-            else statsHtml = `<span class="card-atk">攻${card.atk}</span><span class="card-dfn">防${card.dfn}</span>`;
-            
-            cardEl.innerHTML = `<div class="card-header"><div class="card-name">${card.name}</div><div class="card-stats">${statsHtml}</div></div><div style="color: #ffaa00; font-size: 8px; text-align: left;">${stars}</div><div class="card-ability">${abilityText}<div class="card-effect-detail">${card.effect}</div></div>`;
-            return cardEl;
-        }
-
-        // 売店＆研究室クリック処理
-        function handleCenterFieldClick() {
-            if (!isMyTurn() || buildingStack.length === 0) return;
-            let top = buildingStack[buildingStack.length - 1];
-            
-            if (selectionMode === 'lab') {
-                selectionMode = null; document.getElementById('guidance-message').innerText = ""; updateScreen(); return;
-            }
-
-            if (top.id === 304 && !hasUsedBaitenThisTurn && !selectionMode && attackingCardIndexes.length === 0) {
-                let myHand = amIHost ? handA : handB; let teachers = myHand.filter(c => c.type === 'teacher');
-                if(teachers.length === 0) return alert("手札に売却できるティーチャーがいません！");
-                let input = prompt(`【売店】を利用しますか？\n捨てる手札の番号(左から1〜${myHand.length})を入力してください。(キャンセルは0)\n※ティーチャーのみ有効`);
-                let idx = parseInt(input) - 1;
-                if(idx >= 0 && idx < myHand.length && myHand[idx].type === 'teacher') {
-                    let card = myHand[idx]; let r = card.rarity; let logMsg = `【${myName}】が売店で [${card.name}](★${r}) を売却してアイテムを使用！`;
-                    if(r === 1) { hurryCount = Math.max(0, hurryCount - 5); logMsg += `\n早くしろ！と言える回数が5回回復！`; }
-                    else if(r === 2) { if(amIHost) hpA += 100; else hpB += 100; logMsg += `\nHPが100回復！`; }
-                    else if(r === 3) {
-                        if(amIHost) { poisonA=0; burnA=0; } else { poisonB=0; burnB=0; }
-                        let myF = amIHost ? fieldA : fieldB; myF.forEach(c => { c.hanseibunTurns=0; c.videoTurns=0; c.silenceTurns=0; c.sleepTurns=0; c.isPetrified=false; });
-                        logMsg += `\nプレイヤーと味方先生の状態異常が全回復！`;
-                    }
-                    else if(r === 4) {
-                        let myF = amIHost ? fieldA : fieldB; let tList = myF.filter(c=>c.type==='teacher');
-                        if(tList.length > 0) { let t = tList[Math.floor(Math.random()*tList.length)]; t.revivesLeft++; logMsg += `\n[${t.name}] に防御シールド（耐性+1回）付与！`; }
-                        else logMsg += `\nしかしフィールドに先生がいなかった！`;
-                    }
-                    else if(r === 5) {
-                        let myF = amIHost ? fieldA : fieldB; let tList = myF.filter(c=>c.type==='teacher');
-                        if(tList.length > 0) { let t = tList[Math.floor(Math.random()*tList.length)]; t.atk += 500; logMsg += `\n[${t.name}] の攻撃力が 500 アップ！`; }
-                        else logMsg += `\nしかしフィールドに先生がいなかった！`;
-                    }
-                    sendToGraveyard(card, amIHost?'A':'B'); myHand.splice(idx, 1); hasUsedBaitenThisTurn = true; addLog(logMsg); sendState(logMsg); updateScreen();
-                } else if(input && input !== "0") alert("正しい番号を選択してください。");
-            } else if (top.id === 311 && top.owner === currentTurn && !selectionMode && attackingCardIndexes.length === 0) {
-                let residents = [...fieldA, ...fieldB].filter(c => c.inLab);
-                if (residents.length > 0) return alert("すでに研究室には人がいます！");
-                selectionMode = 'lab';
-                document.getElementById('guidance-message').innerText = "研究室に入れる味方の先生をクリックしてください。（もう一度建物を押すとキャンセル）";
-                updateScreen();
-            }
-        }
-
-        function createFieldCardElement(card, player, index) {
-            const cardEl = createCardElement(card);
-            const isMine = (amIHost && player === 'A') || (!amIHost && player === 'B');
-            cardEl.style.background = isMine ? (card.type==='building'?'#fff3cd':'#cce5ff') : (card.type==='building'?'#ffeeba':'#f8d7da'); 
-            cardEl.style.borderColor = isMine ? (card.type==='building'?'#d39e00':'#004085') : (card.type==='building'?'#d39e00':'#721c24');
-
-            cardEl.id = `field-card-${player}-${index}`; cardEl.dataset.index = index; cardEl.dataset.mode = isMine ? 'self' : 'enemy';
-
-            if (card.hanseibunTurns > 0 || card.videoTurns > 0 || card.sleepTurns > 0 || card.isPetrified) { cardEl.style.background = '#ccc'; cardEl.style.borderColor = '#555'; }
-            if (!isMyTurn()) { cardEl.style.cursor = 'default'; return cardEl; }
-
-            if (!isMine) {
-            } else { 
-                cardEl.style.cursor = 'pointer';
-                if (selectionMode) {
-                    if (card.type === 'teacher') {
-                        cardEl.style.boxShadow = '0 0 10px #28a745'; cardEl.classList.add('selected-attacker');
-                        cardEl.onclick = () => { applySelection(index); };
-                    }
-                } else if (card.isPetrified) { cardEl.onclick = () => alert("石化していて行動不能です！");
-                } else if (card.sleepTurns > 0) { cardEl.onclick = () => alert("スヤスヤと眠っていて行動不能です！");
-                } else if (card.hanseibunTurns > 0) { cardEl.onclick = () => alert("「容赦ない一括」を受け行動不能です！");
-                } else if (card.videoTurns > 0) { cardEl.onclick = () => alert("動画に夢中になっていて行動不能です！");
-                } else if (card.canAttack && card.type === 'teacher') {
-                    if (attackingCardIndexes.includes(index)) cardEl.classList.add('selected-attacker');
-                    cardEl.style.touchAction = "none";
-                    cardEl.onpointerdown = (e) => {
-                        if (e.button !== 0 && e.pointerType === 'mouse') return;
-                        let isDragging = false; let dragClone = null; let startX = e.clientX; let startY = e.clientY;
-                        function onPointerMove(moveEvent) {
-                            if (!isDragging && (Math.abs(moveEvent.clientX - startX) > 10 || Math.abs(moveEvent.clientY - startY) > 10)) {
-                                isDragging = true;
-                                if (!attackingCardIndexes.includes(index)) selectAttacker(index);
-                                dragClone = cardEl.cloneNode(true);
-                                dragClone.style.position = 'fixed'; dragClone.style.opacity = '0.8'; dragClone.style.pointerEvents = 'none'; dragClone.style.zIndex = '9999';
-                                dragClone.style.width = cardEl.offsetWidth + 'px'; dragClone.style.height = cardEl.offsetHeight + 'px'; dragClone.style.boxShadow = '0 0 15px #dc3545';
-                                document.body.appendChild(dragClone);
-                            }
-                            if (isDragging && dragClone) { dragClone.style.left = moveEvent.clientX - (cardEl.offsetWidth / 2) + 'px'; dragClone.style.top = moveEvent.clientY - (cardEl.offsetHeight / 2) + 'px'; }
-                        }
-                        function onPointerUp(upEvent) {
-                            document.removeEventListener('pointermove', onPointerMove); document.removeEventListener('pointerup', onPointerUp);
-                            if (isDragging) {
-                                if (dragClone) dragClone.remove();
-                                let targetEl = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
-                                if (!targetEl) return;
-                                let dropCard = targetEl.closest('.card'); let dropHpBox = targetEl.closest('.player-hp-box'); let dropBuilding = targetEl.closest('#center-building'); 
-
-                                if (dropBuilding && dropBuilding.dataset.mode) fightCards(attackingCardIndexes, 0, dropBuilding.dataset.mode);
-                                else if (dropCard && dropCard.dataset.mode) fightCards(attackingCardIndexes, parseInt(dropCard.dataset.index), dropCard.dataset.mode);
-                                else if (dropHpBox && dropHpBox.dataset.mode) attackPlayerDirectly(attackingCardIndexes, dropHpBox.dataset.mode);
-                            } else selectAttacker(index);
-                        }
-                        document.addEventListener('pointermove', onPointerMove); document.addEventListener('pointerup', onPointerUp);
-                    };
-                }
-            }
-            return cardEl;
         }
 
         function summonCard(cardIndex) {
@@ -505,7 +423,7 @@
             const currentHand = amIHost ? handA : handB; const currentField = amIHost ? fieldA : fieldB;
             const enemyField = amIHost ? fieldB : fieldA; const card = currentHand[cardIndex];
 
-            if (selectionMode) {
+            if (selectionMode && selectionMode !== 'clean') {
                 if (cardIndex === selectedCardIndex) { selectionMode = null; selectedCardIndex = null; document.getElementById('guidance-message').innerText = ""; updateScreen(); return; } 
                 else { selectionMode = null; selectedCardIndex = null; document.getElementById('guidance-message').innerText = ""; }
             }
@@ -513,39 +431,37 @@
             if (card.type === 'building') {
                 if (hasSummonedBuildingThisTurn) return alert("建物は1ターン1枚までです");
                 let logMsg = `【${myName}】がフィールド中央に 建物[${card.name}] を建設！`;
-                card.owner = currentTurn; buildingStack.push(card); currentHand.splice(cardIndex, 1); hasSummonedBuildingThisTurn = true;
+                card.owner = currentTurn; buildingStack.push(card); currentHand.splice(cardIndex, 1); hasSummonedBuildingThisTurn = true; readyToPlayIndex = null;
                 addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver(); return;
             }
 
             if (card.type === 'weapon') {
                 if (hasEquippedWeaponThisTurn) return alert("武器は1ターン1枚までです");
                 if (!currentField.some(c => c.type === 'teacher')) return alert("装備させる先生が場にいません！");
-                selectionMode = 'weapon'; selectedCardIndex = cardIndex; document.getElementById('guidance-message').innerText = "装備させる味方の先生をクリックしてください。（もう一度押すとキャンセル）";
-                updateScreen(); return;
+                selectionMode = 'weapon'; selectedCardIndex = cardIndex; document.getElementById('guidance-message').innerText = "装備させる味方の先生をクリックしてください。";
+                readyToPlayIndex = null; updateScreen(); return;
             }
 
             if (card.type === 'spell') {
+                // ★ 掃除カードのタップモードへの移行トリガー
+                if (card.id === 111) {
+                    if (hasCastSpellThisTurn) return alert("呪文は1ターン1枚までです");
+                    if (currentHand.length <= 1) return alert("削除できる他の手札がありません！");
+                    selectionMode = 'clean'; selectedCardIndex = cardIndex;
+                    document.getElementById('guidance-message').innerText = "手札から削除したい不要なカードをタップしてください。";
+                    readyToPlayIndex = null; updateScreen(); return;
+                }
                 if (card.id === 107) {
                     if (hasCastSpellThisTurn) return alert("呪文は1ターン1枚までです");
                     if (!currentField.some(c => c.type === 'teacher')) return alert("道連れを付与する味方がいません！");
                     selectionMode = 'spell_107'; selectedCardIndex = cardIndex; document.getElementById('guidance-message').innerText = "道連れを付与する味方の先生をクリックしてください。";
-                    updateScreen(); return;
+                    readyToPlayIndex = null; updateScreen(); return;
                 }
                 if (card.id === 115) {
                     if (hasCastSpellThisTurn) return alert("呪文は1ターン1枚までです");
                     if (!currentField.some(c => c.type === 'teacher')) return alert("ボールを渡す味方がいません！");
                     selectionMode = 'spell_115'; selectedCardIndex = cardIndex; document.getElementById('guidance-message').innerText = "ボールを渡す味方の先生をクリックしてください。";
-                    updateScreen(); return;
-                }
-                if (card.id === 111) {
-                    let input = prompt(`「掃除」を発動します。\n捨てる手札の番号(左から1〜${currentHand.length})を入力してください。(キャンセルは0)`);
-                    let targetIdx = parseInt(input) - 1;
-                    if (targetIdx >= 0 && targetIdx < currentHand.length && targetIdx !== cardIndex) {
-                        let discarded = currentHand.splice(targetIdx, 1)[0]; if (targetIdx < cardIndex) cardIndex--;
-                        let logMsg = `【${myName}】が「掃除」を発動！手札から [${discarded.name}] を削除して綺麗にした！`;
-                        sendToGraveyard(discarded, amIHost ? 'A' : 'B'); currentHand.splice(cardIndex, 1); hasCastSpellThisTurn = true;
-                        addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver(); return;
-                    } else return alert("正しい番号を選択するか、キャンセルしました。");
+                    readyToPlayIndex = null; updateScreen(); return;
                 }
 
                 if (hasCastSpellThisTurn) return alert("呪文は1ターン1枚までです");
@@ -553,9 +469,8 @@
                 let targetField = enemyField; let tName = enemyName; const akasako = enemyField.find(c => c.id === 15);
                 
                 if (akasako && !isAbilityBlocked(currentTurn === 'A'?'B':'A', akasako)) {
-                    sendCutin("赤迫", "はいあうとー"); logMsg += `\n相手の[赤迫]の「はいあうとー」が発動！呪文が跳ね返ってきた！`; targetField = currentField; tName = myName;
+                    logMsg += `\n相手の[赤迫]の「はいあうとー」が発動！呪文が跳ね返ってきた！`; targetField = currentField; tName = myName;
                 }
-                
                 let tPlayer = (targetField === fieldA) ? 'A' : 'B';
                 
                 if (card.id === 101) castTestSpell(100, targetField, tPlayer, true);
@@ -579,12 +494,12 @@
                     let isReflected = (targetField === currentField); let ownerPlayer = isReflected ? (currentTurn === 'A' ? 'B' : 'A') : currentTurn; let victimField = isReflected ? currentField : enemyField;
                     
                     if (summonId === 4) {
-                        sendCutin("おがぢ", "哲学対話、しようか"); logMsg += `\n大福帳から「おがぢ」が呼び出された！`;
+                        logMsg += `\n大福帳から「おがぢ」が呼び出された！`;
                         philosophySpace.push({ card: cloneTeacher, originalPlayer: ownerPlayer, remainingTurns: 2 });
                         for (let i = victimField.length - 1; i >= 0; i--) { if (victimField[i].type === 'teacher') philosophySpace.push({ card: victimField.splice(i, 1)[0], originalPlayer: ownerPlayer==='A'?'B':'A', remainingTurns: 2 }); }
                         logMsg += "\nそのまま「哲学対話」が発動し、場を連れ去った！";
                     } else {
-                        sendCutin("薄井", "つまはじき"); logMsg += `\n読書感想から「薄井」が呼び出された！\n「つまはじき」発動！相手の先生に左から合計2000ダメージ！`;
+                        logMsg += `\n読書感想から「薄井」が呼び出された！\n「つまはじき」発動！相手の先生に左から合計2000ダメージ！`;
                         let remainingDmg = 2000;
                         for (let i = 0; i < victimField.length; i++) {
                             if (remainingDmg <= 0) break; let target = victimField[i];
@@ -614,8 +529,8 @@
                 if (card.id === 109) { logMsg += `\nトグルスイッチ作動！！大爆発で敵味方すべてに1000ダメージ！`; castTestSpell(1000, enemyField, amIHost ? 'B' : 'A', true); castTestSpell(1000, currentField, amIHost ? 'A' : 'B', false); }
                 if (card.id === 110) {
                     logMsg += `\n【学生課】が動いた！フィールドの敵味方すべての先生が粛清された！`;
-                    for(let i=enemyField.length-1; i>=0; i--) { if(enemyField[i].type==='teacher') sendToGraveyard(enemyField.splice(i,1)[0], amIHost?'B':'A'); }
-                    for(let i=currentField.length-1; i>=0; i--) { if(currentField[i].type==='teacher') sendToGraveyard(currentField.splice(i,1)[0], amIHost?'A':'B'); }
+                    for(let i=enemyField.length-1; i>=0; i--) { if(enemyField[i].type==='teacher') { sendToGraveyard(enemyField.splice(i,1)[0], tPlayer); } }
+                    for(let i=currentField.length-1; i>=0; i--) { if(currentField[i].type==='teacher') { sendToGraveyard(currentField.splice(i,1)[0], amIHost?'A':'B'); } }
                 }
                 if (card.id === 112) {
                     if(isHokenshitsuActive()) { logMsg += `\nしかし [保健室] の効果で睡眠を防いだ！`; } 
@@ -625,18 +540,30 @@
                     if(isHokenshitsuActive()) { logMsg += `\nしかし [保健室] の効果で睡眠を防いだ！`; } 
                     else { enemyField.forEach(c => { if(c.type === 'teacher') c.sleepTurns = 2; }); currentField.forEach(c => { if(c.type === 'teacher') c.sleepTurns = 2; }); logMsg += `\n高専祭だ！敵味方のティーチャー全員が2ターンの間「睡眠」状態になった！`; }
                 }
+                if (card.id === 116) {
+                    if(isHokenshitsuActive()) { logMsg += `\nしかし [保健室] の効果で死の宣告を防いだ！`; } 
+                    else { targetField.forEach(c => { if(c.type === 'teacher') c.deathSentenceTurns = Math.floor(Math.random() * 10); }); logMsg += `\n相手のティーチャー全員に「死の宣告」を付与した！`; }
+                }
+                // ★ 新呪文：プッシュスイッチ
+                if (card.id === 117) {
+                    logMsg += `\nプッシュスイッチオン！！大爆発で敵味方すべての先生と建物に500ダメージ！`;
+                    castTestSpell(500, enemyField, amIHost ? 'B' : 'A', true);
+                    castTestSpell(500, currentField, amIHost ? 'A' : 'B', false);
+                }
 
-                currentHand.splice(cardIndex, 1); hasCastSpellThisTurn = true; addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver(); return;
+                currentHand.splice(cardIndex, 1); hasCastSpellThisTurn = true; readyToPlayIndex = null; addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver(); return;
             }
 
             if (hasSummonedTeacherThisTurn) return alert("先生は1ターン1枚までです");
-            let logMsg = `【${myName}】が [${card.name}] を召喚！`;
-            if (card.id === 18) card.justReturned = false;
+            
+            // ★ 全先生共通のカットイン自動システム
+            if (!isAbilityBlocked(currentTurn, card) && card.cutin) {
+                sendCutin(card.name, card.cutin);
+            }
 
             if (isAbilityBlocked(currentTurn, card)) { logMsg += "\nアビリティは無効化・沈黙された。"; } 
             else {
                 if (card.id === 1) {
-                    sendCutin("長峰", "一回死んだほうがいんじゃないですかねぇww");
                     let teachers = enemyField.filter(c => c.type === 'teacher'); let targetCount = Math.min(teachers.length, 4); let destroyedCount = 0;
                     for (let i = enemyField.length - 1; i >= 0; i--) {
                         if(destroyedCount >= targetCount) break;
@@ -646,10 +573,9 @@
                             destroyedCount++;
                         }
                     }
-                    logMsg += "\n「一回死んだほうが〜」相手を最大4枚破壊！";
                 }
                 if (card.id === 2) {
-                    sendCutin("薄井", "つまはじき"); let remainingDmg = 2000; logMsg += `\n「つまはじき」発動！相手の先生に左から合計2000ダメージを割り振る！`;
+                    let remainingDmg = 2000;
                     for (let i = 0; i < enemyField.length; i++) {
                         if (remainingDmg <= 0) break; let target = enemyField[i];
                         if (target.type === 'teacher') {
@@ -664,58 +590,59 @@
                     }
                 }
                 if (card.id === 4) {
-                    sendCutin("おがぢ", "哲学対話、しようか"); philosophySpace.push({ card: card, originalPlayer: currentTurn, remainingTurns: 2 });
+                    philosophySpace.push({ card: card, originalPlayer: currentTurn, remainingTurns: 2 });
                     for (let i = enemyField.length - 1; i >= 0; i--) { if (enemyField[i].type === 'teacher') philosophySpace.push({ card: enemyField.splice(i, 1)[0], originalPlayer: currentTurn === 'A'?'B':'A', remainingTurns: 2 }); }
-                    logMsg += "\n「哲学対話、しようか」お互いの場を全員連れ去った！"; currentHand.splice(cardIndex, 1); hasSummonedTeacherThisTurn = true; addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver(); return;
+                    logMsg += "\nお互いの場を全員連れ去った！"; currentHand.splice(cardIndex, 1); hasSummonedTeacherThisTurn = true; readyToPlayIndex = null; addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver(); return;
                 }
-                if (card.id === 12) { let teachers = enemyField.filter(c => c.type === 'teacher'); if (teachers.length > 0) { const t = teachers[Math.floor(Math.random() * teachers.length)]; t.atk = 74; t.dfn = 74; logMsg += `\n「be good lose」[${t.name}]のステータスを74にした！`; } }
+                if (card.id === 12) { let teachers = enemyField.filter(c => c.type === 'teacher'); if (teachers.length > 0) { const t = teachers[Math.floor(Math.random() * teachers.length)]; t.atk = 74; t.dfn = 74; logMsg += `\n[${t.name}]のステータスを「74」にした！`; } }
                 if (card.id === 13) {
-                    for (let i = enemyField.length - 1; i >= 0; i--) { if (enemyField[i].type === 'teacher' && enemyField[i].rarity <= 4) { let rc = enemyField.splice(i, 1)[0]; rc.canAttack = false; rc.hanseibunTurns = 0; rc.videoTurns = 0; rc.silenceTurns = 0; rc.sleepTurns = 0; rc.ballTurns = 0; rc.isPetrified = false; rc.inLab = false; rc.hasRevenge = false; if (rc.id === 7) rc.revivesLeft = 3; enemyHand.push(rc); } }
-                    logMsg += "\n「しまえ！」相手の星4以下の先生を全員手札に戻した！";
+                    for (let i = enemyField.length - 1; i >= 0; i--) { if (enemyField[i].type === 'teacher' && enemyField[i].rarity <= 4) { let rc = enemyField.splice(i, 1)[0]; rc.canAttack = false; rc.hanseibunTurns = 0; rc.videoTurns = 0; rc.silenceTurns = 0; rc.sleepTurns = 0; rc.ballTurns = 0; rc.deathSentenceTurns = -1; rc.isPetrified = false; rc.inLab = false; rc.hasRevenge = false; if (rc.id === 7) rc.revivesLeft = 3; enemyHand.push(rc); } }
+                    logMsg += "\n相手の星4以下の先生を全員手札に戻した！";
                 }
-                if (card.id === 14) { let teachers = enemyField.filter(c => c.type === 'teacher'); if (teachers.length > 0) { const rIdx = Math.floor(Math.random() * teachers.length); const rId = teachers[rIdx].id; const idx = enemyField.findIndex(c=>c.id===rId); const stolen = enemyField.splice(idx, 1)[0]; stolen.canAttack = false; stolen.hasRevenge = false; stolen.inLab = false; currentField.push(stolen); logMsg += `\n「私物狩り」相手の [${stolen.name}] を奪い取った！`; } }
+                if (card.id === 14) { let teachers = enemyField.filter(c => c.type === 'teacher'); if (teachers.length > 0) { const rIdx = Math.floor(Math.random() * teachers.length); const rId = teachers[rIdx].id; const idx = enemyField.findIndex(c=>c.id===rId); const stolen = enemyField.splice(idx, 1)[0]; stolen.canAttack = false; stolen.hasRevenge = false; stolen.inLab = false; currentField.push(stolen); logMsg += `\n相手の [${stolen.name}] を奪い取った！`; } }
                 if (card.id === 16) {
                     let myGrave = amIHost ? graveyardA : graveyardB; let teachersGrave = myGrave.filter(c => c.type === 'teacher');
-                    if (teachersGrave.length > 0) { let rIdx = Math.floor(Math.random() * teachersGrave.length); let targetId = teachersGrave[rIdx].id; let realIdx = myGrave.findIndex(c => c.id === targetId); let revived = myGrave.splice(realIdx, 1)[0]; currentField.push(revived); logMsg += `\n「魂の選択」！墓地から[${revived.name}]を復活させた！`; } 
-                    else { logMsg += `\nしかし墓地には誰もいなかった！`; }
+                    if (teachersGrave.length > 0) { let rIdx = Math.floor(Math.random() * teachersGrave.length); let targetId = teachersGrave[rIdx].id; let realIdx = myGrave.findIndex(c => c.id === targetId); let revived = myGrave.splice(realIdx, 1)[0]; currentField.push(revived); logMsg += `\n墓地から[${revived.name}]を復活させた！`; } 
                 }
                 if (card.id === 17) {
                     let teachers = enemyField.filter(c => c.type === 'teacher'); let rem = teachers.length % 3;
                     if (rem > 0) {
-                        logMsg += `\n「岡田のグループワーク」発動！3人組になれなかった ${rem} 人が寂しくなって自殺した！`; let destroyed = 0;
+                        logMsg += `\n3人組になれなかった ${rem} 人が寂しくなって自殺した！`; let destroyed = 0;
                         for (let i = enemyField.length - 1; i >= 0; i--) { if (destroyed >= rem) break; if (enemyField[i].type === 'teacher') { spawnEffectAtElement(`field-card-${amIHost?'B':'A'}-${i}`, 'explode', destroyed*100); let d = enemyField.splice(i, 1)[0]; sendToGraveyard(d, amIHost ? 'B' : 'A'); destroyed++; } }
-                    } else { logMsg += `\n「岡田のグループワーク」発動！しかし全員綺麗に3人組を作れた！`; }
+                    }
+                }
+                // ★ 新先生：田辺先生の効果
+                if (card.id === 19) {
+                    enemyField.forEach(c => { if(c.type === 'teacher') c.deathSentenceTurns = 3; });
+                    logMsg += `\n相手のフィールド上のすべてのティーチャーに3ターンの「死の宣告」を付与した！`;
                 }
             }
-            card.canAttack = false; currentField.push(card); currentHand.splice(cardIndex, 1); hasSummonedTeacherThisTurn = true; addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
+            card.canAttack = false; currentField.push(card); currentHand.splice(cardIndex, 1); hasSummonedTeacherThisTurn = true; readyToPlayIndex = null; addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
         }
 
         function applySelection(targetIndex) {
             if(!isMyTurn() || !selectionMode) return;
-            const currentHand = amIHost ? handA : handB; const currentField = amIHost ? fieldA : fieldB;
-            const targetTeacher = currentField[targetIndex];
+            const currentHand = amIHost ? handA : handB; const currentField = amIHost ? fieldA : fieldB; const targetTeacher = currentField[targetIndex];
             
             if (selectionMode === 'weapon') {
                 const weaponCard = currentHand[selectedCardIndex];
                 let atkBonus = 0; if (weaponCard.id === 201) atkBonus = 100; else if (weaponCard.id === 202) atkBonus = 200; else if (weaponCard.id === 203) atkBonus = 400;
-                if (isKoboActive()) { atkBonus += 100; }
-                targetTeacher.atk += atkBonus; currentHand.splice(selectedCardIndex, 1); hasEquippedWeaponThisTurn = true;
+                if (isKoboActive()) { atkBonus += 100; } targetTeacher.atk += atkBonus; currentHand.splice(selectedCardIndex, 1); hasEquippedWeaponThisTurn = true;
                 let logMsg = `【${myName}】が武器 [${weaponCard.name}] を使用！\n[${targetTeacher.name}] が装備して攻撃力が ${atkBonus} アップした！`;
                 selectionMode = null; selectedCardIndex = null; document.getElementById('guidance-message').innerText = "";
                 addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
             } else if (selectionMode === 'spell_107') {
                 targetTeacher.hasRevenge = true; currentHand.splice(selectedCardIndex, 1); hasCastSpellThisTurn = true;
-                let logMsg = `【${myName}】が呪文 [薄井の復讐] を発動！\n味方の [${targetTeacher.name}] に道連れ効果を付与した！倒されると相手を即死させる！`;
+                let logMsg = `【${myName}】が呪文 [薄井の復讐] を発動！\n味方の [${targetTeacher.name}] に道連れ効果を付与した！`;
                 selectionMode = null; selectedCardIndex = null; document.getElementById('guidance-message').innerText = "";
                 addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
             } else if (selectionMode === 'spell_115') {
                 targetTeacher.ballTurns = 3; currentHand.splice(selectedCardIndex, 1); hasCastSpellThisTurn = true;
-                let logMsg = `【${myName}】が呪文 [けむくじゃらボール] を発動！\n[${targetTeacher.name}] にボールを渡した！彼しか攻撃できない！`;
+                let logMsg = `【${myName}】が呪文 [けむくじゃらボール] を発動！\n[${targetTeacher.name}] にボールを渡した！`;
                 selectionMode = null; selectedCardIndex = null; document.getElementById('guidance-message').innerText = "";
                 addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
             } else if (selectionMode === 'lab') {
-                targetTeacher.inLab = true;
-                let logMsg = `【${myName}】の [${targetTeacher.name}] が研究室に入室した！`;
+                targetTeacher.inLab = true; let logMsg = `【${myName}】の [${targetTeacher.name}] が研究室に入室した！`;
                 selectionMode = null; document.getElementById('guidance-message').innerText = "";
                 addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
             }
@@ -723,12 +650,10 @@
 
         function checkBuildingDestroyed(b) {
             if (b.id === 305 && akazuSpace.length > 0) {
-                addLog(`\n🚪 開かずの部屋が破壊され、吸い込まれていた先生たちがフィールドに戻ってきた！`);
+                addLog(`\n🚪 かくじぃの開かずの部屋が破壊され、吸い込まれていた先生たちがフィールドに戻ってきた！`);
                 akazuSpace.forEach(item => { let tf = item.originalPlayer === 'A' ? fieldA : fieldB; tf.push(item.card); }); akazuSpace = [];
             }
-            if (b.id === 311) {
-                [...fieldA, ...fieldB].forEach(c => { if(c.inLab) c.inLab = false; });
-            }
+            if (b.id === 311) { [...fieldA, ...fieldB].forEach(c => { if(c.inLab) c.inLab = false; }); }
         }
 
         function castTestSpell(damage, targetField, targetPlayerStr, hitBuilding = false) {
@@ -760,17 +685,12 @@
             if (hitBuilding && buildingStack.length > 0) {
                 let b = buildingStack[buildingStack.length - 1]; b.dfn -= damage; spawnEffectAtElement('center-building', 'explode', 500);
                 if (b.dfn <= 0) { buildingStack.pop(); checkBuildingDestroyed(b); addLog(`\n💥 巻き添えで 建物[${b.name}] が破壊された！`); } 
-                else { addLog(`\n💥 建物[${b.name}] も巻き添えを食らいHPが ${b.dfn} に減った！`); let targetCardEl = document.getElementById('center-building'); if (targetCardEl) { targetCardEl.classList.remove('damage-shake'); void targetCardEl.offsetWidth; targetCardEl.classList.add('damage-shake'); } }
+                else { let targetCardEl = document.getElementById('center-building'); if (targetCardEl) { targetCardEl.classList.remove('damage-shake'); void targetCardEl.offsetWidth; targetCardEl.classList.add('damage-shake'); } }
             }
         }
 
-        function selectAttacker(idx) { if(!isMyTurn() || selectionMode) return; const pos = attackingCardIndexes.indexOf(idx); if (pos !== -1) attackingCardIndexes.splice(pos, 1); else attackingCardIndexes.push(idx); updateScreen(); }
-
         function fightCards(myCardIndexes, targetCardIndex, targetMode) {
-            if(!isMyTurn()) return;
-            const myField = amIHost ? fieldA : fieldB; 
-            
-            // ★ 白鳥寮＆ボールチェック
+            if(!isMyTurn()) return; const myField = amIHost ? fieldA : fieldB; 
             if (isShiratoriActive()) return alert("白鳥寮が治外法権のため通常攻撃できません！");
             let myBallHolders = myField.filter(c => c.ballTurns > 0);
             if (myBallHolders.length > 0 && !myCardIndexes.every(idx => myField[idx].ballTurns > 0)) return alert("ボールを持っているティーチャーしか攻撃できません！");
@@ -783,7 +703,7 @@
                 spawnEffectAtElement('center-building', 'slash', 0); spawnEffectAtElement('center-building', 'explode', 200);
                 defender.dfn -= totalAtk;
                 if (defender.dfn <= 0) { logMsg += `\n建物 [${defender.name}] を破壊した！`; buildingStack.pop(); checkBuildingDestroyed(defender); } 
-                else { logMsg += `\n建物 [${defender.name}] の耐久値が ${defender.dfn} に減った！`; let targetCardEl = document.getElementById('center-building'); if (targetCardEl) { targetCardEl.classList.remove('damage-shake'); void targetCardEl.offsetWidth; targetCardEl.classList.add('damage-shake'); } }
+                else { let targetCardEl = document.getElementById('center-building'); if (targetCardEl) { targetCardEl.classList.remove('damage-shake'); void targetCardEl.offsetWidth; targetCardEl.classList.add('damage-shake'); } }
                 attackers.forEach(atkCard => { if(atkCard) atkCard.canAttack = false; }); attackingCardIndexes = []; addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver(); return;
             }
 
@@ -794,35 +714,31 @@
 
             let logMsg = `【${myName}】が ${attackerNames.join('+')} で ${targetMode==='self'?'味方の':''}[${defender.name}] に攻撃！`;
             let targetIdStr = `field-card-${targetPlayerStr}-${actualEnemyIndex}`; spawnEffectAtElement(targetIdStr, 'slash', 0); spawnEffectAtElement(targetIdStr, 'explode', 200);
-
             let isDefenderDestroyed = false; let isRevengeActive = defender.hasRevenge; defender.sleepTurns = 0; 
 
             if (defender.id === 9) { logMsg += "\nしかし浅原は宙に浮いているため攻撃が当たらなかった！"; }
             else if (totalAtk >= defender.dfn) {
-                // ★ 研究室の肩代わり処理
                 if (defender.inLab && buildingStack.length > 0 && buildingStack[buildingStack.length-1].id === 311) {
-                    let lab = buildingStack[buildingStack.length-1]; lab.dfn -= totalAtk; logMsg += `\nしかし研究室がダメージを肩代わりした！(残りHP: ${lab.dfn})`;
-                    if(lab.dfn <= 0) { logMsg += `\n💥 研究室は破壊された！`; buildingStack.pop(); checkBuildingDestroyed(lab); }
+                    let lab = buildingStack[buildingStack.length-1]; lab.dfn -= totalAtk;
+                    if(lab.dfn <= 0) { buildingStack.pop(); checkBuildingDestroyed(lab); defender.inLab = false; }
                 } else if (defender.id === 7 && defender.revivesLeft > 0) { defender.revivesLeft--; defender.dfn = 300; }
                 else { let d = targetField.splice(actualEnemyIndex, 1)[0]; sendToGraveyard(d, targetPlayerStr); isDefenderDestroyed = true; }
             } else { let targetCardEl = document.getElementById(targetIdStr); if (targetCardEl) { targetCardEl.classList.remove('damage-shake'); void targetCardEl.offsetWidth; targetCardEl.classList.add('damage-shake'); } }
             
             if (defender.id === 5) { 
-                if (isHokenshitsuActive()) { logMsg += `\n[ジョージ]の「容赦ない一括」！しかし [保健室] の効果で反省文を免れた！`; } 
-                else { attackers.forEach(card => { card.hanseibunTurns = 2; }); logMsg += `\n[ジョージ]の「容赦ない一括」！攻撃した先生は反省文を書かされる！`; }
+                if (isHokenshitsuActive()) { } 
+                else { sendCutin("ジョージ", "そこの連中！"); attackers.forEach(card => { card.hanseibunTurns = 2; }); }
             }
             
             if (isDefenderDestroyed && isRevengeActive) {
-                sendCutin("薄井の復讐", "道連れにしてやる！"); logMsg += `\n💥 [薄井の復讐] が発動！攻撃に参加したティーチャーは全員道連れにされた！`;
+                sendCutin("薄井の復讐", "道連れにしてやる！");
                 attackers.forEach((atkCard, i) => { let currentIdx = myField.indexOf(atkCard); if (currentIdx !== -1) { spawnEffectAtElement(`field-card-${amIHost?'A':'B'}-${currentIdx}`, 'explode', i*150); let d = myField.splice(currentIdx, 1)[0]; sendToGraveyard(d, amIHost ? 'A' : 'B'); } });
             } else { attackers.forEach(atkCard => { if(atkCard) atkCard.canAttack = false; }); }
             attackingCardIndexes = []; addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
         }
 
         function attackPlayerDirectly(myCardIndexes, targetMode) {
-            if(!isMyTurn()) return;
-            const myField = amIHost ? fieldA : fieldB; 
-            
+            if(!isMyTurn()) return; const myField = amIHost ? fieldA : fieldB; 
             if (isShiratoriActive()) return alert("白鳥寮が治外法権のため通常攻撃できません！");
             let myBallHolders = myField.filter(c => c.ballTurns > 0);
             if (myBallHolders.length > 0 && !myCardIndexes.every(idx => myField[idx].ballTurns > 0)) return alert("ボールを持っているティーチャーしか攻撃できません！");
@@ -838,14 +754,14 @@
 
                 if (totalAtk >= kakuji.dfn) {
                     if (kakuji.inLab && buildingStack.length > 0 && buildingStack[buildingStack.length-1].id === 311) {
-                        let lab = buildingStack[buildingStack.length-1]; lab.dfn -= totalAtk; logMsg += `\nしかし研究室がダメージを肩代わりした！(残りHP: ${lab.dfn})`;
-                        if(lab.dfn <= 0) { logMsg += `\n💥 研究室は破壊された！`; buildingStack.pop(); checkBuildingDestroyed(lab); }
+                        let lab = buildingStack[buildingStack.length-1]; lab.dfn -= totalAtk;
+                        if(lab.dfn <= 0) { buildingStack.pop(); checkBuildingDestroyed(lab); kakuji.inLab = false; }
                     } else { let d = targetField.splice(kakujiIndex, 1)[0]; sendToGraveyard(d, targetPlayerStr); isKakujiDestroyed = true; }
                 } else { let targetCardEl = document.getElementById(kakujiIdStr); if (targetCardEl) { targetCardEl.classList.remove('damage-shake'); void targetCardEl.offsetWidth; targetCardEl.classList.add('damage-shake'); } }
                 logMsg += "\nしかし、かくじぃが身代わりになった！";
 
                 if (isKakujiDestroyed && isRevengeActive) {
-                    sendCutin("薄井の復讐", "道連れにしてやる！"); logMsg += `\n💥 [薄井の復讐] が発動！身代わりの[かくじぃ]が攻撃者を全員道連れにした！`;
+                    sendCutin("薄井の復讐", "道連れにしてやる！");
                     attackers.forEach((atkCard, i) => { let currentIdx = myField.indexOf(atkCard); if (currentIdx !== -1) { spawnEffectAtElement(`field-card-${amIHost?'A':'B'}-${currentIdx}`, 'explode', i*150); let d = myField.splice(currentIdx, 1)[0]; sendToGraveyard(d, amIHost ? 'A' : 'B'); } });
                 } else { attackers.forEach(atkCard => { if(atkCard) atkCard.canAttack = false; }); }
             } else {
@@ -859,24 +775,26 @@
         function triggerNextTurn() { if(!isMyTurn()) return; if(window.autoTurnEndTimer) { clearTimeout(window.autoTurnEndTimer); window.autoTurnEndTimer = null; } nextTurn(); }
 
         function nextTurn() {
-            selectionMode = null; selectedCardIndex = null; document.getElementById('guidance-message').innerText = "";
+            selectionMode = null; selectedCardIndex = null; document.getElementById('guidance-message').innerText = ""; readyToPlayIndex = null;
             if (philosophySpace.length > 0) {
                 philosophySpace.forEach(item => item.remainingTurns--); const returns = philosophySpace.filter(item => item.remainingTurns === 0); philosophySpace = philosophySpace.filter(item => item.remainingTurns > 0);
                 returns.forEach(item => { const tf = item.originalPlayer === 'A' ? fieldA : fieldB; tf.push(item.card); });
             }
+            
+            // ★ 加藤の徘徊・復帰の判定処理
             if (wanderSpace.length > 0) {
                 wanderSpace.forEach(item => item.remainingTurns--); const returnsW = wanderSpace.filter(item => item.remainingTurns === 0); wanderSpace = wanderSpace.filter(item => item.remainingTurns > 0);
-                returnsW.forEach(item => { const tf = item.originalPlayer === 'A' ? fieldA : fieldB; item.card.justReturned = true; tf.push(item.card); });
+                returnsW.forEach(item => { const tf = item.originalPlayer === 'A' ? fieldA : fieldB; item.card.justReturned = true; item.card.fieldTurns = 2; tf.push(item.card); });
             }
 
             const myField = amIHost ? fieldA : fieldB; const enemyField = amIHost ? fieldB : fieldA; let endTurnMsg = `【${myName}】がターンを終了しました。`;
 
             if (buildingStack.length > 0) {
-                let activeB = buildingStack[buildingStack.length - 1]; activeB.dfn -= 100; endTurnMsg += `\n🏚️ 建物 [${activeB.name}] の耐久値が減少し、HPが ${activeB.dfn} になった。`;
+                let activeB = buildingStack[buildingStack.length - 1]; activeB.dfn -= 100; endTurnMsg += `\n🏚️ 建物 [${activeB.name}] の耐久値が減減少、HPが ${activeB.dfn} になった。`;
                 if (activeB.dfn <= 0) { endTurnMsg += `\n💥 建物 [${activeB.name}] は崩壊した！`; buildingStack.pop(); checkBuildingDestroyed(activeB);
                 } else if (activeB.id === 305) { 
                     let allT = []; fieldA.forEach((c, i) => { if(c.type === 'teacher') allT.push({p: 'A', i: i}); }); fieldB.forEach((c, i) => { if(c.type === 'teacher') allT.push({p: 'B', i: i}); });
-                    if(allT.length > 0) { let r = allT[Math.floor(Math.random() * allT.length)]; let tF = r.p === 'A' ? fieldA : fieldB; let targetC = tF.splice(r.i, 1)[0]; akazuSpace.push({card: targetC, originalPlayer: r.p}); endTurnMsg += `\n🚪 [開かずの部屋] が [${targetC.name}] を吸い込んだ！`; }
+                    if(allT.length > 0) { let r = allT[Math.floor(Math.random() * allT.length)]; let tF = r.p === 'A' ? fieldA : fieldB; let targetC = tF.splice(r.i, 1)[0]; akazuSpace.push({card: targetC, originalPlayer: r.p}); endTurnMsg += `\n🚪 [かくじぃの開かずの部屋] が [${targetC.name}] を吸い込んだ！`; }
                 }
             }
             
@@ -885,30 +803,50 @@
             if (currentTurn === 'A' && burnA > 0) { let bName = burnA === 1 ? 'やけど' : (burnA === 2 ? '大やけど' : '超やけど'); let bd = burnA * 100; hpA -= bd; endTurnMsg += `\n🔥 ${bName}！【${amIHost ? myName : enemyName}】は ${bd} ダメージ！`; } 
             else if (currentTurn === 'B' && burnB > 0) { let bName = burnB === 1 ? 'やけど' : (burnB === 2 ? '大やけど' : '超やけど'); let bd = burnB * 100; hpB -= bd; endTurnMsg += `\n🔥 ${bName}！【${amIHost ? enemyName : myName}】は ${bd} ダメージ！`; }
 
-            myField.forEach(card => { if (card.hanseibunTurns > 0) card.hanseibunTurns--; if (card.videoTurns > 0) card.videoTurns--; if (card.silenceTurns > 0) card.silenceTurns--; if (card.sleepTurns > 0) card.sleepTurns--; if (card.ballTurns > 0) card.ballTurns--; });
+            // 死の宣告および加藤の戦線離脱処理（2ターン周期ナーフ）
+            for (let i = myField.length - 1; i >= 0; i--) {
+                let card = myField[i];
+                if (card.deathSentenceTurns > 0) card.deathSentenceTurns--;
+                if (card.deathSentenceTurns === 0) {
+                    endTurnMsg += `\n💀 宣告完了！[${card.name}] は突然死した！`; spawnEffectAtElement(`field-card-${currentTurn}-${i}`, 'explode', 0); sendToGraveyard(myField.splice(i, 1)[0], currentTurn);
+                } else {
+                    if (card.hanseibunTurns > 0) card.hanseibunTurns--; if (card.videoTurns > 0) card.videoTurns--; 
+                    if (card.silenceTurns > 0) card.silenceTurns--; if (card.sleepTurns > 0) card.sleepTurns--; if (card.ballTurns > 0) card.ballTurns--;
+                    
+                    // ★ 加藤の徘徊ターン管理（2ターンで離脱）
+                    if (card.id === 18 && !isAbilityBlocked(currentTurn, card)) {
+                        if (card.justReturned) { card.justReturned = false; card.fieldTurns = 2; }
+                        card.fieldTurns--;
+                        if (card.fieldTurns <= 0) {
+                            let kato = myField.splice(i, 1)[0];
+                            wanderSpace.push({ card: kato, originalPlayer: currentTurn, remainingTurns: 2 }); // 2ターン除外
+                            endTurnMsg += `\n🚶 [加藤] が徘徊のため戦線離脱した（2ターン除外）。`;
+                        }
+                    }
+                }
+            }
 
             myField.forEach(card => {
                 if (card.id === 8 && !isAbilityBlocked(currentTurn, card) && enemyField.length > 0) {
-                    if (isHokenshitsuActive()) { endTurnMsg += `\n[三谷]の効果発動！しかし [保健室] で動画視聴を免れた！`; } 
+                    if (isHokenshitsuActive()) { } 
                     else { let t = enemyField.filter(c => c.type === 'teacher' && c.videoTurns === 0 && c.hanseibunTurns === 0 && !c.isPetrified); if (t.length > 0) { let target = t[Math.floor(Math.random() * t.length)]; target.videoTurns = 1; endTurnMsg += `\n[三谷]の効果！相手の[${target.name}]は動画に夢中！`; } }
                 }
             });
 
             enemyField.forEach(card => { if(card.type === 'teacher') card.canAttack = (card.hanseibunTurns === 0 && card.videoTurns === 0 && card.sleepTurns === 0 && !card.isPetrified); });
 
-            [fieldA, fieldB].forEach((f, idx) => { let pStr = idx === 0 ? 'A' : 'B'; for (let i = f.length - 1; i >= 0; i--) { if (f[i].id === 18 && !isAbilityBlocked(pStr, f[i])) { if (f[i].justReturned) { f[i].justReturned = false; } else { wanderSpace.push({ card: f.splice(i, 1)[0], originalPlayer: pStr, remainingTurns: 1 }); } } } });
-
             currentTurn = (currentTurn === 'A') ? 'B' : 'A';
             hasSummonedTeacherThisTurn = false; hasCastSpellThisTurn = false; hasEquippedWeaponThisTurn = false; hasSummonedBuildingThisTurn = false; hasUsedBaitenThisTurn = false;
-            attackingCardIndexes = []; hurryCount = 0; drawToFive(currentTurn);
+            attackingCardIndexes = []; hurryCount = 0; drawHand(currentTurn); // 6枚までドロー
 
             const nextActiveField = currentTurn === 'A' ? fieldA : fieldB;
             if (isGymActive()) {
                 let rId = [401, 402, 403][Math.floor(Math.random() * 3)];
-                let t = { ...EXTRA_TEACHERS.find(c => c.id === rId), canAttack: false, hanseibunTurns: 0, videoTurns: 0, silenceTurns: 0, sleepTurns: 0, ballTurns: 0, isPetrified: false, inLab: false, justReturned: false, revivesLeft: 0, hasRevenge: false };
+                let t = { ...EXTRA_TEACHERS.find(c => c.id === rId), canAttack: false, hanseibunTurns: 0, videoTurns: 0, silenceTurns: 0, sleepTurns: 0, ballTurns: 0, deathSentenceTurns: -1, fieldTurns: 2, isPetrified: false, inLab: false, justReturned: false, revivesLeft: 0, hasRevenge: false };
                 nextActiveField.push(t); endTurnMsg += `\n🏀 体育館から [${t.name}] が現れた！`;
                 if (t.id === 401 && !isAbilityBlocked(currentTurn, t)) {
-                    let enemyT = enemyField.filter(c => c.type === 'teacher');
+                    if (t.cutin) sendCutin(t.name, t.cutin);
+                    let enemyT = (currentTurn === 'A' ? fieldB : fieldA).filter(c => c.type === 'teacher');
                     if (enemyT.length > 0) { let target = enemyT[Math.floor(Math.random() * enemyT.length)]; target.isPetrified = true; endTurnMsg += `\n🪨 [石尾] の効果！相手の [${target.name}] を石化させた！`; }
                 }
             }
@@ -920,20 +858,18 @@
             nextActiveField.forEach(card => {
                 if (card.id === 11 && !isAbilityBlocked(currentTurn, card)) {
                     if (currentTurn === 'A') { hpA += 100; poisonA = 0; burnA = 0; } else { hpB += 100; poisonB = 0; burnB = 0; }
-                    nextActiveField.forEach(ally => { ally.hanseibunTurns = 0; ally.videoTurns = 0; ally.silenceTurns = 0; ally.sleepTurns = 0; ally.isPetrified = false; });
+                    nextActiveField.forEach(ally => { ally.hanseibunTurns = 0; ally.videoTurns = 0; ally.silenceTurns = 0; ally.sleepTurns = 0; ally.isPetrified = false; ally.deathSentenceTurns = -1; });
                     endTurnMsg += `\n✨[木村]の効果発動！状態異常がすべて浄化されHPが100回復した！`;
                 }
             });
             
             addLog(endTurnMsg); sendState(endTurnMsg); updateScreen(); checkGameOver();
             
-            // ★ 浅原の千里眼（UI側で自分だけに見せる）
             setTimeout(() => {
                 if (isMyTurn()) {
                     const myField = amIHost ? fieldA : fieldB; const enemyHand = amIHost ? handB : handA;
                     if (myField.some(c => c.id === 9 && !isAbilityBlocked(currentTurn, c))) {
-                        let handNames = enemyHand.map(c => c.name).join(", ");
-                        alert(`👁️ 【浅原の千里眼】\n相手の手札:\n${handNames || "なし"}`);
+                        sendCutin("浅原", "私には全て視えている"); let handNames = enemyHand.map(c => c.name).join(", "); alert(`👁️ 【浅原の千里眼】\n相手の手札:\n${handNames || "なし"}`);
                     }
                 }
             }, 500);
