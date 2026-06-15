@@ -53,13 +53,12 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">AI対戦版 Ver 24.1</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">AI対戦版</span></h1>
         <div class="patch-notes">
             <strong>🤖 完全オフライン・ソロプレイ専用</strong><br>
-            ・🐛 <b>AIフリーズバグ修正</b>：`sendCutin`エラーを解消し、AIが確実にカードを出せるようになりました。<br>
+            ・🐛 <b>ReferenceError修正</b>：AI起動時の内部エラーを完全解消！正常にゲームが進行します。<br>
             ・🧠 <b>AI完全覚醒</b>：一番強い先生を出し、一斉攻撃で倒せる敵をピンポイントで狙ってきます。<br>
-            ・🛡️ <b>しげよしバグ修正</b>：耐性貫通やトランプ即死バグ等の最新オンライン版の修正もすべて適用済み。<br>
-            ・💢 <b>早くしろ！の復活</b>：AIに10回連打すると警告＆専用メッセージが出ます。
+            ・🛡️ <b>しげよしバグ等修正</b>：耐性貫通やトランプ全体ダメージバグ等、オンライン版の修正もすべて適用済み。
         </div>
 
         <input type="text" id="player-name-input" class="name-input" placeholder="あなたの名前を入力" value="プレイヤー">
@@ -144,14 +143,21 @@
             document.body.appendChild(box); setTimeout(() => box.remove(), 2500);
         }
 
-        // ★ AI版用の擬似的な通信ダミー関数（エラー防止用）
-        function sendCutin(name, text) { triggerCutin(name, text); }
-
-        let myName = "プレイヤー"; let enemyName = "AI先生"; let maxHp = 5000;
-        let hasCheckedSenriganThisTurn = false; let hurryCount = 0;
+        // ★ ここでAI用の必須グローバル変数を宣言（ReferenceError防止）
+        let isAiMode = false;
+        let amIHost = true;
+        let myName = "プレイヤー"; 
+        let enemyName = "AI先生"; 
+        let maxHp = 5000;
+        let hasCheckedSenriganThisTurn = false; 
+        let hurryCount = 0;
         
         function isMyTurn() { return currentTurn === 'A'; } 
         function canExecuteAction() { return currentTurn === 'A' || currentTurn === 'B'; }
+
+        // ★ AI版専用のダミー通信関数（エラー防止）
+        function sendState() {}
+        function sendCutin(name, text) { triggerCutin(name, text); }
 
         function sendHurry() {
             if (hurryCount >= 10) { alert("早くしろ！は1ターンに10回までです。深呼吸して待ちましょう"); return; }
@@ -261,6 +267,7 @@
         let selectionMode = null; let selectedCardIndex = null; let readyToPlayIndex = null;
 
         function startAiMode() {
+            isAiMode = true; amIHost = true;
             myName = document.getElementById('player-name-input').value.trim() || "プレイヤー";
             maxHp = parseInt(document.getElementById('hp-select').value) || 5000;
             document.getElementById('setup-screen').style.display = 'none';
@@ -276,6 +283,7 @@
             attackingCardIndexes = []; philosophySpace = []; wanderSpace = []; akazuSpace = []; poisonA = 0; poisonB = 0; burnA = 0; burnB = 0; graveyardA = []; graveyardB = [];
             selectionMode = null; selectedCardIndex = null; readyToPlayIndex = null; hurryCount = 0; hasCheckedSenriganThisTurn = false;
             if(window.autoTurnEndTimer) { clearTimeout(window.autoTurnEndTimer); window.autoTurnEndTimer = null; }
+            
             drawHand('A'); drawHand('B'); 
             let firstPlayer = (currentTurn === 'A') ? myName : enemyName; 
             addLog(`🎲 【${firstPlayer}】の先攻でスタート！(HP: ${maxHp})`);
@@ -284,7 +292,6 @@
             if (currentTurn === 'B') setTimeout(processAiTurn, 1000);
         }
 
-        // ★ AI思考ルーチン
         async function processAiTurn() {
             if (currentTurn !== 'B') return;
 
@@ -293,7 +300,6 @@
                 actionTaken = false;
                 await new Promise(r => setTimeout(r, 800));
                 
-                // 1. 最も強い先生を優先して出す
                 let bestTeacherIdx = -1; let maxAtk = -1;
                 for (let i = 0; i < handB.length; i++) {
                     if (handB[i] && handB[i].type === 'teacher' && handB[i].atk > maxAtk) {
@@ -305,7 +311,6 @@
                     summonCard(bestTeacherIdx); actionTaken = true; continue;
                 }
 
-                // 2. その他のカードを出す
                 for (let i = 0; i < handB.length; i++) {
                     let card = handB[i]; if (!card) continue;
                     
@@ -322,19 +327,17 @@
                         }
                     }
                     if (card.type === 'spell' && !hasCastSpellThisTurn) {
-                        if (card.id === 111) { // 掃除
+                        if (card.id === 111) { 
                             if (handB.filter(c=>c).length > 1) {
                                 let dropIdx = handB.findIndex((c, idx) => c && idx !== i);
                                 selectionMode = 'clean'; selectedCardIndex = i;
                                 
                                 let discarded = handB[dropIdx]; handB[dropIdx] = null;
-                                let cleanCard = handB[i]; handB[i] = null;
-                                let logMsg = `【AI先生】が「掃除」を発動！手札から不要な [${discarded.name}] を削除した！`;
-                                sendToGraveyard(discarded, 'B'); sendToGraveyard(cleanCard, 'B');
-                                hasCastSpellThisTurn = true; selectionMode = null; selectedCardIndex = null;
+                                let logMsg = `【AI先生】が手札から不要な [${discarded.name}] を削除した！`;
+                                sendToGraveyard(discarded, 'B');
                                 addLog(logMsg); updateScreen(); actionTaken = true; break;
                             }
-                        } else if (card.id === 107 || card.id === 115) { // 対象指定呪文
+                        } else if (card.id === 107 || card.id === 115) { 
                             let tIdx = fieldB.findIndex(c=>c.type==='teacher' && !c.inLab);
                             if (tIdx !== -1) { 
                                 selectionMode = (card.id === 107) ? 'spell_107' : 'spell_115'; 
@@ -350,7 +353,6 @@
                 
                 if (actionTaken) continue;
 
-                // 3. 連携一斉攻撃
                 await new Promise(r => setTimeout(r, 800));
                 
                 if (!isShiratoriActive()) {
@@ -412,7 +414,6 @@
 
         function drawHand(player) {
             let hand = (player === 'A' ? handA : handB); let deck = (player === 'A' ? deckA : deckB); 
-            // 左から：万能、呪文、武器、先生、先生、先生
             const slotTypes = ['any', 'spell', 'weapon', 'teacher', 'teacher', 'teacher'];
             while (hand.length < 6) hand.push(null);
 
@@ -516,10 +517,9 @@
                         cardEl.style.boxShadow = '0 0 15px #dc3545';
                         cardEl.onclick = () => {
                             if(!isMyTurn()) return;
-                            let discarded = currentHand[idx]; currentHand[idx] = null; let cleanCard = currentHand[selectedCardIndex]; currentHand[selectedCardIndex] = null;
-                            let logMsg = `【自分】が「掃除」を発動！手札から不要な [${discarded.name}] を削除した！`;
-                            sendToGraveyard(discarded, 'A'); sendToGraveyard(cleanCard, 'A');
-                            hasCastSpellThisTurn = true; selectionMode = null; selectedCardIndex = null; document.getElementById('guidance-message').innerText = ""; addLog(logMsg); updateScreen();
+                            let discarded = currentHand[idx]; currentHand[idx] = null;
+                            let logMsg = `【自分】が手札から不要な [${discarded.name}] を削除した！`;
+                            sendToGraveyard(discarded, 'A'); addLog(logMsg); updateScreen();
                         };
                     }
                     handDiv.appendChild(cardEl);
@@ -848,7 +848,7 @@
                         if (targetField === fieldA) burnA++; else burnB++; let cB = (targetField === fieldA) ? burnA : burnB; let bName = cB === 1 ? 'やけど' : (cB === 2 ? '大やけど' : '超やけど'); logMsg += `\nプレイヤーを ${bName} 状態にした！`; spawnEffectAtElement(targetField===fieldA ? 'hp-box-self':'hp-box-enemy', 'explode');
                     }
                 }
-                if (card.id === 105) { currentField.forEach(c => {if(c.type==='teacher' && !c.inLab) c.atk += 100;}); }
+                if (card.id === 105) { currentField.forEach(c => {if(c.type==='teacher' && !c.inLab) c.atk += 100;}); logMsg += `\n味方ティーチャー全員の攻撃力が100アップ！`; }
                 if (card.id === 106 || card.id === 114) {
                     let summonId = card.id === 106 ? 4 : 2; let cloneTeacher = { ...CARD_LIST.find(c => c.id === summonId), canAttack: false, hanseibunTurns: 0, videoTurns: 0, silenceTurns: 0, sleepTurns: 0, ballTurns:0, deathSentenceTurns:-1, pechankoTurns:0, fieldTurns:1, isPetrified:false, inLab:false, justReturned:false, revivesLeft: 0, hasRevenge: false, weapons: [], shieldHP: 0, hasLocker: false };
                     let isReflected = (targetField === currentField); let ownerPlayer = isReflected ? currentTurn : (currentTurn === 'A' ? 'A' : 'B'); let victimField = isReflected ? currentField : enemyField;
@@ -970,7 +970,7 @@
                 if (card.id === 17) {
                     let teachers = enemyField.filter(c => c.type === 'teacher' && !c.inLab); let rem = teachers.length % 3;
                     if (rem > 0) {
-                        logMsg += `\n3人組になれなかった ${rem} 人が寂しくなって自殺した！`; let destroyed = 0;
+                        logMsg += `\n3人組になれなかった ${rem} 人が寂しくなって自害した！`; let destroyed = 0;
                         for (let i = enemyField.length - 1; i >= 0; i--) { 
                             if (destroyed >= rem) break; 
                             if (enemyField[i].type === 'teacher' && !enemyField[i].inLab) { 
@@ -1108,7 +1108,6 @@
             if (hitBuilding && buildingStack.length > 0) {
                 let b = buildingStack[buildingStack.length - 1]; b.dfn -= damage; spawnEffectAtElement('center-building', 'explode', 500);
                 if (b.dfn <= 0) { buildingStack.pop(); checkBuildingDestroyed(b); msg += `\n💥 巻き添えで 建物[${b.name}] が破壊された！`; } 
-                else { let targetCardEl = document.getElementById('center-building'); if (targetCardEl) { targetCardEl.classList.remove('damage-shake'); void targetCardEl.offsetWidth; targetCardEl.classList.add('damage-shake'); } }
             }
             return msg;
         }
@@ -1164,7 +1163,7 @@
                         spawnEffectAtElement(`field-card-${targetPlayerStr}-${i}`, 'slash', 0);
                         t.sleepTurns = 0;
                         if (hasLineTracer) {
-                            t.pechankoTurns = 3; logMsg += `\n[${t.name}] を3ターンぺちゃんこにした！`;
+                            t.pechankoTurns = 3; logMsg += `\n[${t.name}] はライントレーサーに轢かれて3ターンぺちゃんこになった！`;
                         } else {
                             if (t.id === 9) { logMsg += `\n[${t.name}] は宙に浮いているため回避！`; }
                             else {
@@ -1194,7 +1193,7 @@
                 let kakujiIndex = targetField.findIndex(card => card.id === 3);
                 if (kakujiIndex !== -1) { logMsg += `\nかくじぃがプレイヤーへのダメージを庇おうとしたが全体攻撃に巻き込まれた！`; } 
                 else {
-                    let hpBoxIdStr = targetPlayerStr === 'A' ? (amIHost ? 'hp-box-self' : 'hp-box-enemy') : (amIHost ? 'hp-box-enemy' : 'hp-box-self');
+                    let hpBoxIdStr = targetPlayerStr === 'A' ? 'hp-box-self' : 'hp-box-enemy';
                     spawnEffectAtElement(hpBoxIdStr, 'slash', 0);
                     if (targetPlayerStr === 'B') { hpB -= totalAtk; } else { hpA -= totalAtk; }
                     logMsg += `\n敵プレイヤーに ${totalAtk} ダメージ！`;
@@ -1390,7 +1389,7 @@
             });
             
             addLog(endTurnMsg); updateScreen(); checkGameOver();
-            if (isAiMode && currentTurn === 'B' && hpA > 0 && hpB > 0) { setTimeout(processAiTurn, 1000); }
+            if (currentTurn === 'B' && hpA > 0 && hpB > 0) { setTimeout(processAiTurn, 1000); }
         }
 
         function checkGameOver() {
@@ -1398,7 +1397,7 @@
                 let winnerStr = hpA <= 0 && hpB <= 0 ? "引き分け！" : (hpA <= 0 ? `${enemyName} の勝利！` : `${myName} の勝利！`);
                 let msg = `🎉 決着がつきました 🎉\n【 ${winnerStr} 】\n\nゲームを初期状態にリセットします。`;
                 addLog(msg); alert(msg);
-                setTimeout(() => { initGame(); let firstPlayer = (currentTurn === 'A') ? myName : enemyName; msg = `🎲 【${firstPlayer}】の先攻でスタート！`; addLog(msg); if (isAiMode && currentTurn === 'B') setTimeout(processAiTurn, 1000); }, 1000);
+                setTimeout(() => { initGame(); let firstPlayer = (currentTurn === 'A') ? myName : enemyName; msg = `🎲 【${firstPlayer}】の先攻でスタート！`; addLog(msg); if (currentTurn === 'B') setTimeout(processAiTurn, 1000); }, 1000);
             }
         }
     </script>
