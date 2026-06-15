@@ -14,7 +14,6 @@
         .player-name { color: #007bff; font-size: 14px; margin-right: 5px; }
         .enemy-name { color: #d9534f; font-size: 14px; margin-right: 5px; }
         
-        /* フィールドのレイアウトを上下と中央に分離 */
         .field { min-height: 110px; border: 2px dashed #999; margin: 5px auto; width: 95%; max-width: 600px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #fff; border-radius: 8px; padding: 6px; box-sizing: border-box; }
         #center-field { min-height: 85px; margin: 8px auto; width: 95%; max-width: 600px; display: flex; justify-content: center; align-items: center; background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 5px; box-sizing: border-box; box-shadow: inset 0 0 10px rgba(0,0,0,0.1); position: relative; }
         #center-field::before { content: "フィールド・建物エリア"; position: absolute; top: 2px; left: 5px; font-size: 9px; color: #856404; font-weight: bold; }
@@ -39,9 +38,10 @@
         .setup-btn:hover { opacity: 0.8; }
         .name-input { padding: 10px; width: 90%; max-width: 250px; font-size: 15px; text-align: center; border: 2px solid #ccc; border-radius: 5px; margin-bottom: 15px; font-weight: bold; }
 
-        @keyframes blink { 0% { opacity: 0.7; } 100% { opacity: 1; } }
+        /* パッチノート用スタイル */
+        .patch-notes { text-align: left; background: #f8f9fa; border: 1px solid #ccc; padding: 10px; height: 110px; overflow-y: auto; font-size: 11px; margin-bottom: 10px; border-radius: 5px; line-height: 1.4; }
         
-        /* エフェクト位置を正確に合わせるため absolute に変更 */
+        @keyframes blink { 0% { opacity: 0.7; } 100% { opacity: 1; } }
         @keyframes slashAnim {
             0% { transform: translate(-50%, -50%) scale(0.5) rotate(-45deg); opacity: 0; }
             50% { transform: translate(-50%, -50%) scale(1.5) rotate(-45deg); opacity: 1; filter: drop-shadow(0 0 10px white); }
@@ -65,7 +65,18 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h2>先生カードゲーム オンライン <span class="version-badge">Ver 3.0</span></h2>
+        <h2>先生カードゲーム オンライン <span class="version-badge">Ver 4.0</span></h2>
+        
+        <!-- ★ パッチノートの追加 -->
+        <div class="patch-notes">
+            <strong>📢 アップデート履歴 (Ver 4.0)</strong><br>
+            ・☠️ 毒・🔥 やけどの重ね掛け（進化）を実装！猛毒・超やけどでダメージ倍増！<br>
+            ・全体魔法・薄井のアビリティがフィールド中央の「建物」にも巻き添えでヒットするように修正！<br>
+            ・薄井は先生を優先して攻撃し、余ったダメージで建物を破壊します。<br>
+            ・長峰の即死、おがぢの連れ去り効果は建物には効きません。<br>
+            ・ドラッグ＆ドロップで味方も攻撃できる自傷コンボに対応済。<br>
+        </div>
+
         <input type="text" id="player-name-input" class="name-input" placeholder="あなたの名前を入力" value="ゲスト">
         <br>
         <button class="setup-btn" onclick="attemptCreateRoom()">部屋を作る（先攻）</button>
@@ -89,10 +100,13 @@
             <strong>HP: <span id="hp-b">5000</span> (手札: <span id="enemy-card-count">0</span>枚)</strong>
         </div>
         
+        <!-- 相手のフィールド -->
         <div class="field" id="field-B"></div>
         
+        <!-- 中央の建物フィールド -->
         <div id="center-field"></div>
         
+        <!-- 自分のフィールド -->
         <div class="field" id="field-A"></div>
         
         <h3>手札（ドラッグ＆ドロップで攻撃！）</h3>
@@ -121,12 +135,10 @@
             logDiv.appendChild(entry); logDiv.scrollTop = logDiv.scrollHeight;
         }
 
-        // ★ エフェクト発生関数のスクロール追従修正
         function spawnEffectAtElement(elId, type, delay = 0) {
             const el = document.getElementById(elId);
             if (!el) return;
             const rect = el.getBoundingClientRect();
-            // absolute配置にして、スクロール量(scrollX/Y)を足すことで正確な位置に表示
             const x = rect.left + window.scrollX + rect.width / 2;
             const y = rect.top + window.scrollY + rect.height / 2;
             
@@ -201,7 +213,7 @@
                 hasSummonedBuildingThisTurn = data.hasSummonedBuildingThisTurn;
                 
                 philosophySpace = data.philosophySpace;
-                buildingStack = data.buildingStack; // ★ 建物の同期
+                buildingStack = data.buildingStack;
                 
                 poisonA = data.poisonA; poisonB = data.poisonB; 
                 burnA = data.burnA; burnB = data.burnB;
@@ -219,7 +231,7 @@
                 conn.send({
                     hpA, hpB, fieldA, fieldB, handA, handB, deckA, deckB,
                     currentTurn, hasSummonedTeacherThisTurn, hasCastSpellThisTurn, hasEquippedWeaponThisTurn, hasSummonedBuildingThisTurn,
-                    philosophySpace, buildingStack, // ★ 建物の同期
+                    philosophySpace, buildingStack,
                     poisonA, poisonB, burnA, burnB, graveyardA, graveyardB,
                     logMsg: logText, alertMsg: popupText, playerName: myName
                 });
@@ -249,7 +261,7 @@
         // ==========================================
         const CARD_LIST = [
             { id: 1, type: "teacher", name: "長峰", atk: 200, dfn: 2000, rarity: 5, ability: "一回死んだほうがいんじゃないですかねぇww", effect: "【召喚時】相手のフィールド上のティーチャーを４枚破壊する。" },
-            { id: 2, type: "teacher", name: "薄井", atk: 1000, dfn: 300, rarity: 5, ability: "つまはじき", effect: "【召喚時】相手のフィールドのティーチャーに左から順に合計2000ダメージを割り振る。" },
+            { id: 2, type: "teacher", name: "薄井", atk: 1000, dfn: 300, rarity: 5, ability: "つまはじき", effect: "【召喚時】相手のティーチャーに左から順に2000ダメージを割り振る。" },
             { id: 3, type: "teacher", name: "かくじぃ", atk: 100, dfn: 1000, rarity: 5, ability: "みとけ！", effect: "【身代わり】この先生が場にいる限り、他の仲間への攻撃やプレイヤーへのダイレクトアタックをすべて代わりに受ける。" },
             { id: 4, type: "teacher", name: "おがぢ", atk: 300, dfn: 300, rarity: 4, ability: "哲学対話", effect: "【召喚時】１ターン相手のフィールド上のティーチャー全員と哲学対話状態にする。１ターン後に全員戻ってくる。" },
             { id: 5, type: "teacher", name: "ジョージ", atk: 700, dfn: 700, rarity: 5, ability: "諸君ら", effect: "【常時】自身に攻撃したティーチャーには反省文を書かせる。反省文を書くには１ターン必要" },
@@ -265,21 +277,23 @@
             { id: 15, type: "teacher", name: "赤迫", atk: 600, dfn: 100, rarity: 3, ability: "はいあうとー", effect: "【常時】相手が呪文を発動した時、その効果を跳ね返し、相手自身のフィールドに受けさせる。" },
             { id: 16, type: "teacher", name: "内堀", atk: 300, dfn: 400, rarity: 4, ability: "魂の選択", effect: "【召喚時】倒された味方のティーチャーをランダムに1体復活させる。" },
             
-            { id: 101, type: "spell", name: "小テスト", atk: "-", dfn: "-", rarity: 1, ability: "呪文カード", effect: "相手のすべてのティーチャーに100ダメージ。" },
-            { id: 102, type: "spell", name: "中間テスト", atk: "-", dfn: "-", rarity: 3, ability: "呪文カード", effect: "相手のすべてのティーチャーに300ダメージ。" },
-            { id: 103, type: "spell", name: "期末テスト", atk: "-", dfn: "-", rarity: 5, ability: "呪文カード", effect: "相手のすべてのティーチャーに700ダメージ。" },
-            { id: 104, type: "spell", name: "寮飯", atk: "-", dfn: "-", rarity: 2, ability: "呪文カード", effect: "相手プレイヤーを「毒」状態にする（毎ターン200ダメージ）。" },
+            // 呪文
+            { id: 101, type: "spell", name: "小テスト", atk: "-", dfn: "-", rarity: 1, ability: "呪文カード", effect: "相手のすべてのティーチャーと建物に100ダメージ。" },
+            { id: 102, type: "spell", name: "中間テスト", atk: "-", dfn: "-", rarity: 3, ability: "呪文カード", effect: "相手のすべてのティーチャーと建物に300ダメージ。" },
+            { id: 103, type: "spell", name: "期末テスト", atk: "-", dfn: "-", rarity: 5, ability: "呪文カード", effect: "相手のすべてのティーチャーと建物に700ダメージ。" },
+            { id: 104, type: "spell", name: "寮飯", atk: "-", dfn: "-", rarity: 2, ability: "呪文カード", effect: "相手を「毒」状態にする（重ね掛けで進化: 毒200→猛毒400→超毒600）。" },
             { id: 105, type: "spell", name: "学食", atk: "-", dfn: "-", rarity: 2, ability: "呪文カード", effect: "自分のフィールドにいるすべてのティーチャーの攻撃力を+100する。" },
-            { id: 106, type: "spell", name: "おがぢの大福帳", atk: "-", dfn: "-", rarity: 4, ability: "呪文カード", effect: "「おがぢ」を自分のフィールドに呼び出し、効果を発動する。" },
+            { id: 106, type: "spell", name: "おがぢの大福帳", atk: "-", dfn: "-", rarity: 4, ability: "呪文カード", effect: "「おがぢ」を呼び出し、効果を発動する。" },
             { id: 107, type: "spell", name: "薄井の復讐", atk: "-", dfn: "-", rarity: 5, ability: "呪文カード", effect: "味方のランダムな先生1体に「道連れ」を付与。それを倒した相手を即死させる。" },
-            { id: 108, type: "spell", name: "ハンダごて", atk: "-", dfn: "-", rarity: 2, ability: "呪文カード", effect: "相手プレイヤーを「やけど」状態にする（毎ターン100ダメージ）。" },
-            { id: 109, type: "spell", name: "トグルスイッチ", atk: "-", dfn: "-", rarity: 4, ability: "呪文カード", effect: "トグルスイッチを作動させ大爆発。敵味方すべての先生に1000ダメージ。" },
+            { id: 108, type: "spell", name: "ハンダごて", atk: "-", dfn: "-", rarity: 2, ability: "呪文カード", effect: "相手を「やけど」状態にする（重ね掛けで進化: やけど100→大やけど200→超やけど300）。" },
+            { id: 109, type: "spell", name: "トグルスイッチ", atk: "-", dfn: "-", rarity: 4, ability: "呪文カード", effect: "トグルスイッチを作動させ大爆発。敵味方すべての先生と建物に1000ダメージ。" },
             
+            // 武器
             { id: 201, type: "weapon", name: "ブレッドボード", atk: "+100", dfn: "-", rarity: 1, ability: "武器カード", effect: "味方の先生に装備しブレッドボードで殴る（攻撃力+100）。" },
             { id: 202, type: "weapon", name: "デジタルマルチメータ", atk: "+200", dfn: "-", rarity: 2, ability: "武器カード", effect: "味方の先生に装備しデジタルマルチメータで殴る（攻撃力+200）。" },
             { id: 203, type: "weapon", name: "オシロスコープ", atk: "+400", dfn: "-", rarity: 4, ability: "武器カード", effect: "味方の先生に装備しオシロスコープで殴る（攻撃力+400）。" },
             
-            // ★ 建物カード（HP: 500）
+            // 建物カード
             { id: 301, type: "building", name: "図書館", atk: "-", dfn: 500, rarity: 3, ability: "建物カード", effect: "【常時】敵味方すべてのティーチャーを「沈黙（アビリティ無効）」にする。" },
             { id: 302, type: "building", name: "保健室", atk: "-", dfn: 500, rarity: 3, ability: "建物カード", effect: "【常時】敵味方すべてのプレイヤーと先生への状態異常を無効化する。" },
             { id: 303, type: "building", name: "ものづくり工房", atk: "-", dfn: 500, rarity: 3, ability: "建物カード", effect: "【自動】毎ターン開始時、ランダムな先生に武器を自動装備させる。" }
@@ -289,7 +303,6 @@
             return [...CARD_LIST].map(c => ({ ...c, canAttack: false, hanseibunTurns: 0, videoTurns: 0, silenceTurns: 0, revivesLeft: (c.id === 7) ? 3 : 0, hasRevenge: false })).sort(() => Math.random() - 0.5);
         }
 
-        // ★ 建物環境チェック関数
         function isLibraryActive() { return buildingStack.length > 0 && buildingStack[buildingStack.length - 1].id === 301; }
         function isHokenshitsuActive() { return buildingStack.length > 0 && buildingStack[buildingStack.length - 1].id === 302; }
         function isKoboActive() { return buildingStack.length > 0 && buildingStack[buildingStack.length - 1].id === 303; }
@@ -298,7 +311,7 @@
             if (isLibraryActive()) return true; // 図書館があれば常時沈黙
             if (card && card.silenceTurns > 0) return true;
             const enemyField = (targetPlayer === 'A') ? fieldB : fieldA;
-            return enemyField.some(c => c.id === 6); // シドウェル
+            return enemyField.some(c => c.id === 6);
         }
 
         // ==========================================
@@ -308,11 +321,12 @@
         let prevHpA = 5000; let prevHpB = 5000; 
         let currentTurn = 'A'; let handA = []; let handB = []; let deckA = []; let deckB = [];
         let fieldA = []; let fieldB = [];
-        let buildingStack = []; // ★ 建物スタック
+        let buildingStack = [];
         let hasSummonedTeacherThisTurn = false; let hasCastSpellThisTurn = false;
         let hasEquippedWeaponThisTurn = false; let hasSummonedBuildingThisTurn = false;
         let attackingCardIndexes = []; let philosophySpace = []; window.autoTurnEndTimer = null; 
         
+        // ★ 状態異常のレベル（進化）カウント
         let poisonA = 0; let poisonB = 0; let burnA = 0; let burnB = 0;
         let graveyardA = []; let graveyardB = [];
         let weaponMode = false; let selectedWeaponIndex = null;
@@ -358,8 +372,14 @@
             document.getElementById('display-my-name').innerText = `【${myName}】`;
             document.getElementById('display-enemy-name').innerText = `【${enemyName}】`;
 
-            let hpAStr = hpA + (poisonA > 0 ? ` (☠️毒)` : "") + (burnA > 0 ? ` (🔥やけど)` : "");
-            let hpBStr = hpB + (poisonB > 0 ? ` (☠️毒)` : "") + (burnB > 0 ? ` (🔥やけど)` : "");
+            // ★ 進化した状態異常の名前を表示
+            let pNameA = poisonA === 1 ? '毒' : (poisonA === 2 ? '猛毒' : (poisonA >= 3 ? '超毒' : ''));
+            let pNameB = poisonB === 1 ? '毒' : (poisonB === 2 ? '猛毒' : (poisonB >= 3 ? '超毒' : ''));
+            let bNameA = burnA === 1 ? 'やけど' : (burnA === 2 ? '大やけど' : (burnA >= 3 ? '超やけど' : ''));
+            let bNameB = burnB === 1 ? 'やけど' : (burnB === 2 ? '大やけど' : (burnB >= 3 ? '超やけど' : ''));
+
+            let hpAStr = hpA + (poisonA > 0 ? ` (☠️${pNameA})` : "") + (burnA > 0 ? ` (🔥${bNameA})` : "");
+            let hpBStr = hpB + (poisonB > 0 ? ` (☠️${pNameB})` : "") + (burnB > 0 ? ` (🔥${bNameB})` : "");
 
             if (amIHost) {
                 document.getElementById('hp-a').innerText = hpAStr; document.getElementById('hp-b').innerText = hpBStr;
@@ -380,7 +400,6 @@
             document.getElementById('end-turn-btn').style.display = isMyTurn() ? 'inline-block' : 'none';
             document.getElementById('hurry-btn').style.display = isMyTurn() ? 'none' : 'inline-block';
 
-            // ★ 3つのフィールドを個別に描画
             const fieldBDiv = document.getElementById('field-B'); fieldBDiv.innerHTML = '';
             const fieldADiv = document.getElementById('field-A'); fieldADiv.innerHTML = '';
             const centerDiv = document.getElementById('center-field'); centerDiv.innerHTML = '';
@@ -397,7 +416,6 @@
             }
             fieldBDiv.appendChild(fBDiv); fieldADiv.appendChild(fADiv);
 
-            // ★ 中央の建物フィールド描画
             if (buildingStack.length > 0) {
                 let topBuilding = buildingStack[buildingStack.length - 1];
                 let buildEl = createCardElement(topBuilding);
@@ -531,8 +549,11 @@
 
                                 let dropCard = targetEl.closest('.card');
                                 let dropHpBox = targetEl.closest('.player-hp-box');
+                                let dropBuilding = targetEl.closest('#center-building'); // 建物へのドロップ判定
 
-                                if (dropCard && dropCard.dataset.mode) {
+                                if (dropBuilding && dropBuilding.dataset.mode) {
+                                    fightCards(attackingCardIndexes, 0, dropBuilding.dataset.mode);
+                                } else if (dropCard && dropCard.dataset.mode) {
                                     fightCards(attackingCardIndexes, parseInt(dropCard.dataset.index), dropCard.dataset.mode);
                                 } else if (dropHpBox && dropHpBox.dataset.mode) {
                                     attackPlayerDirectly(attackingCardIndexes, dropHpBox.dataset.mode);
@@ -549,6 +570,42 @@
             return cardEl;
         }
 
+        // ★ 全体魔法などで、先生と「建物」の両方にダメージを与える共通関数
+        function castTestSpell(damage, targetField, targetPlayerStr, hitBuilding = false) {
+            const kakujiIndex = targetField.findIndex(c => c.id === 3);
+            if (kakujiIndex !== -1) {
+                spawnEffectAtElement(`field-card-${targetPlayerStr}-${kakujiIndex}`, 'explode', 0);
+                const kakuji = targetField[kakujiIndex]; 
+                const totalDmg = damage * targetField.filter(c=>c.type==='teacher').length;
+                if (totalDmg >= kakuji.dfn) { let d = targetField.splice(kakujiIndex, 1)[0]; sendToGraveyard(d, targetPlayerStr); }
+            } else {
+                for (let i = targetField.length - 1; i >= 0; i--) {
+                    if (targetField[i].type === 'teacher') {
+                        spawnEffectAtElement(`field-card-${targetPlayerStr}-${i}`, 'explode', (targetField.length-1-i) * 100);
+                        if (damage >= targetField[i].dfn) {
+                            if (targetField[i].id === 7 && targetField[i].revivesLeft > 0) { targetField[i].revivesLeft--; }
+                            else { let d = targetField.splice(i, 1)[0]; sendToGraveyard(d, targetPlayerStr); }
+                        }
+                    }
+                }
+            }
+
+            // ★ 全体魔法が建物にもヒットする処理
+            if (hitBuilding && buildingStack.length > 0) {
+                let b = buildingStack[buildingStack.length - 1];
+                b.dfn -= damage;
+                spawnEffectAtElement('center-building', 'explode', 500);
+                if (b.dfn <= 0) {
+                    buildingStack.pop();
+                    addLog(`\n💥 巻き添えで 建物[${b.name}] が破壊された！`);
+                } else {
+                    addLog(`\n💥 建物[${b.name}] も巻き添えを食らいHPが ${b.dfn} に減った！`);
+                    let targetCardEl = document.getElementById('center-building');
+                    if (targetCardEl) { targetCardEl.classList.remove('damage-shake'); void targetCardEl.offsetWidth; targetCardEl.classList.add('damage-shake'); }
+                }
+            }
+        }
+
         function summonCard(cardIndex) {
             if(!isMyTurn()) return;
             const currentHand = amIHost ? handA : handB; const currentField = amIHost ? fieldA : fieldB;
@@ -561,7 +618,6 @@
                 } else { weaponMode = false; selectedWeaponIndex = null; document.getElementById('guidance-message').innerText = ""; }
             }
 
-            // ★ 建物召喚処理（スタックへ）
             if (card.type === 'building') {
                 if (hasSummonedBuildingThisTurn) return alert("建物は1ターン1枚までです");
                 let logMsg = `【${myName}】がフィールド中央に 建物[${card.name}] を建設！`;
@@ -593,9 +649,11 @@
                 }
                 
                 let tPlayer = (targetField === fieldA) ? 'A' : 'B';
-                if (card.id === 101) castTestSpell(100, targetField, tPlayer);
-                if (card.id === 102) castTestSpell(300, targetField, tPlayer);
-                if (card.id === 103) castTestSpell(700, targetField, tPlayer);
+                
+                // ★ 小テストなどは建物にもヒットする
+                if (card.id === 101) castTestSpell(100, targetField, tPlayer, true);
+                if (card.id === 102) castTestSpell(300, targetField, tPlayer, true);
+                if (card.id === 103) castTestSpell(700, targetField, tPlayer, true);
                 
                 if (card.id === 104) {
                     if(isHokenshitsuActive()) {
@@ -603,7 +661,9 @@
                     } else {
                         if (targetField === enemyField) { if (amIHost) poisonB++; else poisonA++; } 
                         else { if (amIHost) poisonA++; else poisonB++; }
-                        logMsg += `\nプレイヤーを毒状態にした！（毎ターン毒ダメージ200）`;
+                        let currentPoison = targetField === enemyField ? (amIHost ? poisonB : poisonA) : (amIHost ? poisonA : poisonB);
+                        let pName = currentPoison === 1 ? '毒' : (currentPoison === 2 ? '猛毒' : '超毒');
+                        logMsg += `\nプレイヤーを ${pName} 状態にした！（毎ターン毒ダメージ ${currentPoison*200}）`;
                         spawnEffectAtElement(`hp-box-${targetField===enemyField ? (amIHost?'B':'A') : (amIHost?'A':'B')}`, 'explode');
                     }
                 }
@@ -620,7 +680,6 @@
                     logMsg += `\n大福帳から「おがぢ」が呼び出された！`;
                     philosophySpace.push({ card: ogaji, originalPlayer: ownerPlayer, remainingTurns: 2 });
                     
-                    // おがぢの対象から建物を除外するため、先生だけ連れ去る
                     for (let i = victimField.length - 1; i >= 0; i--) {
                         if (victimField[i].type === 'teacher') {
                             philosophySpace.push({ card: victimField.splice(i, 1)[0], originalPlayer: victimPlayer, remainingTurns: 2 });
@@ -642,14 +701,16 @@
                     } else {
                         if (targetField === enemyField) { if (amIHost) burnB++; else burnA++; } 
                         else { if (amIHost) burnA++; else burnB++; }
-                        logMsg += `\nプレイヤーをやけど状態にした！（毎ターンやけどダメージ100）`;
+                        let currentBurn = targetField === enemyField ? (amIHost ? burnB : burnA) : (amIHost ? burnA : burnB);
+                        let bName = currentBurn === 1 ? 'やけど' : (currentBurn === 2 ? '大やけど' : '超やけど');
+                        logMsg += `\nプレイヤーを ${bName} 状態にした！（毎ターンやけどダメージ ${currentBurn*100}）`;
                         spawnEffectAtElement(`hp-box-${targetField===enemyField ? (amIHost?'B':'A') : (amIHost?'A':'B')}`, 'explode');
                     }
                 }
                 if (card.id === 109) {
                     logMsg += `\nトグルスイッチ作動！！大爆発で敵味方すべてに1000ダメージ！`;
-                    castTestSpell(1000, enemyField, amIHost ? 'B' : 'A');
-                    castTestSpell(1000, currentField, amIHost ? 'A' : 'B');
+                    castTestSpell(1000, enemyField, amIHost ? 'B' : 'A', true); // 建物は1回だけダメージ
+                    castTestSpell(1000, currentField, amIHost ? 'A' : 'B', false);
                 }
 
                 currentHand.splice(cardIndex, 1); hasCastSpellThisTurn = true;
@@ -677,6 +738,7 @@
                     }
                     logMsg += "\n「一回死んだほうがいんじゃないですかねぇww」相手を最大4枚破壊！";
                 }
+                // ★ 薄井のアビリティ（先生を優先し、余ったら建物を攻撃）
                 if (card.id === 2) {
                     let remainingDmg = 2000;
                     logMsg += `\n「つまはじき」発動！相手の先生に左から合計2000ダメージを割り振る！`;
@@ -689,7 +751,22 @@
                                 remainingDmg -= target.dfn;
                                 if (target.id === 7 && target.revivesLeft > 0) { target.revivesLeft--; } 
                                 else { let d = enemyField.splice(i, 1)[0]; sendToGraveyard(d, amIHost ? 'B' : 'A'); i--; }
-                            } else { remainingDmg = 0; }
+                            } else { remainingDmg = 0; } // 先生はHPが減らない
+                        }
+                    }
+                    // ★ 先生をなぎ倒してダメージが余っていれば建物を攻撃
+                    if (remainingDmg > 0 && buildingStack.length > 0) {
+                        let b = buildingStack[buildingStack.length - 1];
+                        logMsg += `\n余った ${remainingDmg} ダメージが 建物[${b.name}] に直撃！`;
+                        b.dfn -= remainingDmg;
+                        spawnEffectAtElement('center-building', 'explode', enemyField.length*150);
+                        if (b.dfn <= 0) {
+                            buildingStack.pop();
+                            logMsg += `\n建物 [${b.name}] を粉砕した！`;
+                        } else {
+                            logMsg += `\n建物 [${b.name}] のHPが ${b.dfn} に減った！`;
+                            let targetCardEl = document.getElementById('center-building');
+                            if (targetCardEl) { targetCardEl.classList.remove('damage-shake'); void targetCardEl.offsetWidth; targetCardEl.classList.add('damage-shake'); }
                         }
                     }
                 }
@@ -766,28 +843,8 @@
             addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
         }
 
-        function castTestSpell(damage, targetField, targetPlayerStr) {
-            const kakujiIndex = targetField.findIndex(c => c.id === 3);
-            if (kakujiIndex !== -1) {
-                spawnEffectAtElement(`field-card-${targetPlayerStr}-${kakujiIndex}`, 'explode', 0);
-                const kakuji = targetField[kakujiIndex]; const totalDmg = damage * targetField.filter(c=>c.type==='teacher').length;
-                if (totalDmg >= kakuji.dfn) { let d = targetField.splice(kakujiIndex, 1)[0]; sendToGraveyard(d, targetPlayerStr); }
-            } else {
-                for (let i = targetField.length - 1; i >= 0; i--) {
-                    if (targetField[i].type === 'teacher') {
-                        spawnEffectAtElement(`field-card-${targetPlayerStr}-${i}`, 'explode', (targetField.length-1-i) * 100);
-                        if (damage >= targetField[i].dfn) {
-                            if (targetField[i].id === 7 && targetField[i].revivesLeft > 0) { targetField[i].revivesLeft--; }
-                            else { let d = targetField.splice(i, 1)[0]; sendToGraveyard(d, targetPlayerStr); }
-                        }
-                    }
-                }
-            }
-        }
-
         function selectAttacker(idx) { if(!isMyTurn() || weaponMode) return; const pos = attackingCardIndexes.indexOf(idx); if (pos !== -1) attackingCardIndexes.splice(pos, 1); else attackingCardIndexes.push(idx); updateScreen(); }
 
-        // ★ 戦闘処理（建物攻撃も統合）
         function fightCards(myCardIndexes, targetCardIndex, targetMode) {
             if(!isMyTurn()) return;
             const myField = amIHost ? fieldA : fieldB; 
@@ -796,7 +853,7 @@
             let attackers = myCardIndexes.map(idx => myField[idx]);
             attackers.forEach(card => { totalAtk += card.atk; attackerNames.push(`[${card.name}]`); });
 
-            // ★ 建物への攻撃ルート
+            // 建物への攻撃
             if (targetMode === 'building') {
                 let defender = buildingStack[buildingStack.length - 1];
                 let logMsg = `【${myName}】が ${attackerNames.join('+')} で 建物[${defender.name}] に攻撃！`;
@@ -964,14 +1021,19 @@
             }
             
             if (currentTurn === 'A' && poisonA > 0) {
-                let pd = poisonA * 200; hpA -= pd; endTurnMsg += `\n☠️ 毒の効果！【${amIHost ? myName : enemyName}】は ${pd} のダメージを受けた！`;
+                let pName = poisonA === 1 ? '毒' : (poisonA === 2 ? '猛毒' : '超毒');
+                let pd = poisonA * 200; hpA -= pd; endTurnMsg += `\n☠️ ${pName}の効果！【${amIHost ? myName : enemyName}】は ${pd} のダメージを受けた！`;
             } else if (currentTurn === 'B' && poisonB > 0) {
-                let pd = poisonB * 200; hpB -= pd; endTurnMsg += `\n☠️ 毒の効果！【${amIHost ? enemyName : myName}】は ${pd} のダメージを受けた！`;
+                let pName = poisonB === 1 ? '毒' : (poisonB === 2 ? '猛毒' : '超毒');
+                let pd = poisonB * 200; hpB -= pd; endTurnMsg += `\n☠️ ${pName}の効果！【${amIHost ? enemyName : myName}】は ${pd} のダメージを受けた！`;
             }
+            
             if (currentTurn === 'A' && burnA > 0) {
-                let bd = burnA * 100; hpA -= bd; endTurnMsg += `\n🔥 やけどの効果！【${amIHost ? myName : enemyName}】は ${bd} のダメージを受けた！`;
+                let bName = burnA === 1 ? 'やけど' : (burnA === 2 ? '大やけど' : '超やけど');
+                let bd = burnA * 100; hpA -= bd; endTurnMsg += `\n🔥 ${bName}の効果！【${amIHost ? myName : enemyName}】は ${bd} のダメージを受けた！`;
             } else if (currentTurn === 'B' && burnB > 0) {
-                let bd = burnB * 100; hpB -= bd; endTurnMsg += `\n🔥 やけどの効果！【${amIHost ? enemyName : myName}】は ${bd} のダメージを受けた！`;
+                let bName = burnB === 1 ? 'やけど' : (burnB === 2 ? '大やけど' : '超やけど');
+                let bd = burnB * 100; hpB -= bd; endTurnMsg += `\n🔥 ${bName}の効果！【${amIHost ? enemyName : myName}】は ${bd} のダメージを受けた！`;
             }
 
             myField.forEach(card => { 
@@ -1006,7 +1068,6 @@
 
             const nextActiveField = currentTurn === 'A' ? fieldA : fieldB;
             
-            // ★ ものづくり工房の自動効果（ターン開始時）
             if (isKoboActive()) {
                 let allTeachers = [...fieldA, ...fieldB].filter(c => c.type === 'teacher');
                 if (allTeachers.length > 0) {
