@@ -62,10 +62,11 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h2>先生カードゲーム <span class="version-badge">Ver 14.0 究極</span></h2>
+        <h2>先生カードゲーム <span class="version-badge">Ver 15.0</span></h2>
         
         <div class="patch-notes">
-            <strong>📢 アップデート履歴 (Ver 14.0)</strong><br>
+            <strong>📢 アップデート履歴 (Ver 15.0)</strong><br>
+            ・🗣️ <b>専用カットイン適用</b>：すべての先生・魔法発動時のカットイン文言を専用のセリフに統一・変更。<br>
             ・🎴 <b>手札枠の完全固定</b>：左3枠が「呪文・建物・武器」、右3枠が「先生」に完全固定されました！<br>
             ・🧪 <b>研究室の共有化</b>：誰が建てた研究室でも、先着1名までお互いに入室可能に。<br>
             ・👆 <b>売店＆掃除の操作改善</b>：文字入力ダイアログを廃止し、タップで直感的に対象を選べるように。<br>
@@ -107,7 +108,6 @@
         <div class="field" id="field-A"></div>
         <div id="guidance-message" style="color: #dc3545; font-weight: bold; margin: 2px 0; min-height: 15px;"></div>
         
-        <!-- ★ 手札の構成表示 -->
         <h3 style="margin-bottom:2px;">手札（1回タップで選択 → もう1回で発動！）</h3>
         <div style="font-size:10px; color:#555; margin-bottom:5px;">左から：[呪文] [建物] [武器] [先生] [先生] [先生]</div>
         <div class="hand" id="hand"></div>
@@ -218,28 +218,28 @@
         function isMyTurn() { return (amIHost && currentTurn === 'A') || (!amIHost && currentTurn === 'B'); }
 
         // ==========================================
-        // カードゲームデータ
+        // カードゲームデータ（ユーザー指定版）
         // ==========================================
         const CARD_LIST = [
-            { id: 1, type: "teacher", name: "長峰", atk: 200, dfn: 2000, rarity: 5, ability: "一回死んだほうがいんじゃないですかねぇww", cutin: "一回死んだほうがいんじゃないですかねぇww", effect: "【召喚時】相手のフィールド上のティーチャーを４枚破壊する。" },
-            { id: 2, type: "teacher", name: "薄井", atk: 1000, dfn: 300, rarity: 5, ability: "つまはじき", cutin: "お前をつまはじきにしてやる。", effect: "【召喚時】相手の先生に左から2000ダメージ。余ったら建物も攻撃。" },
-            { id: 3, type: "teacher", name: "かくじぃ", atk: 100, dfn: 1000, rarity: 5, ability: "みとけ！", cutin: "みとけ！ワシの生き様を！", effect: "【身代わり】他の仲間への攻撃やダイレクトアタックをすべて代わりに受ける。" },
-            { id: 4, type: "teacher", name: "おがぢ", atk: 300, dfn: 300, rarity: 4, ability: "哲学対話", cutin: "哲学対話、しようか。", effect: "【召喚時】１ターン相手のティーチャー全員と哲学対話状態にする。" },
-            { id: 5, type: "teacher", name: "ジョージ", atk: 700, dfn: 700, rarity: 5, ability: "諸君ら", cutin: "そこに座りなさい。", effect: "【常時】自身に攻撃したティーチャーには反省文を書かせる。" },
-            { id: 6, type: "teacher", name: "シドウェル", atk: 100, dfn: 300, rarity: 5, ability: "タメデス", cutin: "タメデス！規律を守りなさい。", effect: "【常時】相手のアビリティを無効化（※呪文には効果なし）。" },
-            { id: 7, type: "teacher", name: "しげよし", atk: 300, dfn: 300, rarity: 3, ability: "再再再試", cutin: "再再再試だ！諦めんな！", effect: "【常時】戦闘や能力による破壊を3回まで無効化して耐える。" },
+            { id: 1, type: "teacher", name: "長峰", atk: 200, dfn: 2000, rarity: 5, ability: "一回死んだほうがいんじゃないですかねぇww", cutin: "一回死んだほうがいんじゃないですかねぇww長峰の容赦ない一括", effect: "【召喚時】相手のフィールド上のティーチャーを４枚破壊する。" },
+            { id: 2, type: "teacher", name: "薄井", atk: 1000, dfn: 300, rarity: 5, ability: "つまはじき", cutin: "つまはじき", effect: "【召喚時】相手の先生に左から2000ダメージ。余ったら建物も攻撃。" },
+            { id: 3, type: "teacher", name: "かくじぃ", atk: 100, dfn: 1000, rarity: 5, ability: "みとけ！", cutin: "みとけ！", effect: "【身代わり】他の仲間への攻撃やダイレクトアタックをすべて代わりに受ける。" },
+            { id: 4, type: "teacher", name: "おがぢ", atk: 300, dfn: 300, rarity: 4, ability: "哲学対話", cutin: "哲学対話しましょう。", effect: "【召喚時】１ターン相手のティーチャー全員と哲学対話状態にする。" },
+            { id: 5, type: "teacher", name: "ジョージ", atk: 700, dfn: 700, rarity: 5, ability: "諸君ら", cutin: "そこの連中", effect: "【常時】自身に攻撃したティーチャーには反省文を書かせる。" },
+            { id: 6, type: "teacher", name: "シドウェル", atk: 100, dfn: 300, rarity: 5, ability: "タメデス", cutin: "タメデース", effect: "【常時】相手のアビリティを無効化（※呪文には効果なし）。" },
+            { id: 7, type: "teacher", name: "しげよし", atk: 300, dfn: 300, rarity: 3, ability: "再再再試", cutin: "再再再試", effect: "【常時】戦闘や能力による破壊を3回まで無効化して耐える。" },
             { id: 8, type: "teacher", name: "三谷", atk: 200, dfn: 200, rarity: 3, ability: "動画みといてね～", cutin: "動画みといてね〜。", effect: "【自動】毎ターン終了時、相手のランダムな先生1体を動画視聴状態にする。" },
             { id: 9, type: "teacher", name: "浅原", atk: 10, dfn: 10, rarity: 1, ability: "尊師", cutin: "私には全て視えている。", effect: "【常時】宙に浮き通常攻撃無効。ターン開始時、千里眼で相手の手札を覗き見る。" },
-            { id: 10, type: "teacher", name: "白戸", atk: 400, dfn: 800, rarity: 2, ability: "次スマホ触ってたらとりあげますよ？", cutin: "次スマホ触ってたらとりあげますよ？", effect: "実際に取り上げられることはない。（アビリティなし）" },
-            { id: 11, type: "teacher", name: "木村", atk: 100, dfn: 400, rarity: 2, ability: "にこにこにこにこ", cutin: "にこにこにこにこ、元気を出して！", effect: "【自動】毎ターン開始時、プレイヤーのHP100回復＆状態異常をすべて浄化。" },
-            { id: 12, type: "teacher", name: "福地", atk: 100, dfn: 100, rarity: 1, ability: "be good lose", cutin: "be good lose！いい負け方をしよう。", effect: "【召喚時】相手のランダムなティーチャー1体のステータスを「74」にする。" },
-            { id: 13, type: "teacher", name: "畑村", atk: 500, dfn: 200, rarity: 5, ability: "しまえ！", cutin: "しまえ！荷物を全部片付けなさい！", effect: "【召喚時】相手のフィールド上の星4以下のティーチャーをすべて手札に戻す。" },
-            { id: 14, type: "teacher", name: "服部", atk: 300, dfn: 100, rarity: 4, ability: "私物狩り", cutin: "私物狩りの時間です。", effect: "【召喚時】相手のフィールドのランダムな先生を1体奪い取る。" },
-            { id: 15, type: "teacher", name: "赤迫", atk: 600, dfn: 100, rarity: 3, ability: "はいあうとー", cutin: "はいあうとー！", effect: "【常時】相手が呪文を発動した時、その効果を跳ね返す。" },
-            { id: 16, type: "teacher", name: "内堀", atk: 300, dfn: 400, rarity: 4, ability: "魂の選択", cutin: "魂の選択…生き返るが良い。", effect: "【召喚時】倒された味方のティーチャーをランダムに1体復活させる。" },
-            { id: 17, type: "teacher", name: "岡田", atk: 300, dfn: 400, rarity: 3, ability: "グループワーク", cutin: "岡田のグループワークを始めます。", effect: "【召喚時】相手先生に3人組を作らせ、余った人数分ランダムに寂しくなって自害する。" },
-            { id: 18, type: "teacher", name: "加藤", atk: 500, dfn: 100, rarity: 2, ability: "徘徊", cutin: "ちょっとそこまで徘徊してきます。", effect: "【自動】徘徊周期が2倍に変更。2ターン戦線に出て、2ターン離脱する。" },
-            { id: 19, type: "teacher", name: "田辺先生", atk: 400, dfn: 400, rarity: 5, ability: "ラーメン大麻", cutin: "ラーメン大麻！ガッツリ食べなさい！", effect: "【自動】毎ターン開始時、相手の全ティーチャーに死の宣告3ターンを付与。" },
+            { id: 10, type: "teacher", name: "白戸", atk: 400, dfn: 800, rarity: 2, ability: "次スマホ触ってたらとりあげますよ？", cutin: "次スマホ触ってたらとりあげますよ？", effect: "実際に取り上げられることはない。" },
+            { id: 11, type: "teacher", name: "木村", atk: 100, dfn: 400, rarity: 2, ability: "にこにこにこにこ", cutin: "にこにこにこにこ", effect: "【自動】毎ターン開始時、プレイヤーのHP100回復＆状態異常をすべて浄化。" },
+            { id: 12, type: "teacher", name: "福地", atk: 100, dfn: 100, rarity: 1, ability: "be good lose", cutin: "be good lose！負けを認めてください。", effect: "【召喚時】相手のランダムなティーチャー1体のステータスを「74」にする。" },
+            { id: 13, type: "teacher", name: "畑村", atk: 500, dfn: 200, rarity: 5, ability: "しまえ！", cutin: "しまえ！", effect: "【召喚時】相手のフィールド上の星4以下のティーチャーをすべて手札に戻す。" },
+            { id: 14, type: "teacher", name: "服部", atk: 300, dfn: 100, rarity: 4, ability: "私物狩り", cutin: "私物狩り。", effect: "【召喚時】相手のフィールドのランダムな先生を1体奪い取る。" },
+            { id: 15, type: "teacher", name: "赤迫", atk: 600, dfn: 100, rarity: 3, ability: "はいあうとー", cutin: "はいあうとーwww", effect: "【常時】相手が呪文を発動した時、その効果を跳ね返す。" },
+            { id: 16, type: "teacher", name: "内堀", atk: 300, dfn: 400, rarity: 4, ability: "魂の選択", cutin: "魂の選択", effect: "【召喚時】倒された味方のティーチャーをランダムに1体復活させる。" },
+            { id: 17, type: "teacher", name: "岡田", atk: 300, dfn: 400, rarity: 3, ability: "岡田のグループワーク", cutin: "岡田のグループワークを始めます。", effect: "【召喚時】相手先生に3人組を作らせ、余った人数分ランダムに寂しくなって自害する。" },
+            { id: 18, type: "teacher", name: "加藤", atk: 500, dfn: 100, rarity: 2, ability: "徘徊", cutin: "徘徊。", effect: "【自動】徘徊周期が2倍に変更。2ターン戦線に出て、2ターン離脱する。" },
+            { id: 19, type: "teacher", name: "田辺先生", atk: 400, dfn: 400, rarity: 5, ability: "ラーメン大麻", cutin: "ラーメン大麻！", effect: "【自動】毎ターン開始時、相手の全ティーチャーに死の宣告3ターンを付与。" },
             
             { id: 101, type: "spell", name: "小テスト", atk: "-", dfn: "-", rarity: 1, ability: "呪文カード", effect: "相手のすべてのティーチャーと建物に100ダメージ。" },
             { id: 102, type: "spell", name: "中間テスト", atk: "-", dfn: "-", rarity: 3, ability: "呪文カード", effect: "相手のすべてに300ダメージ。" },
@@ -247,15 +247,15 @@
             { id: 104, type: "spell", name: "寮飯", atk: "-", dfn: "-", rarity: 2, ability: "呪文カード", effect: "相手を「毒」状態にする（進化: 毒200→猛毒400→超毒600）。" },
             { id: 105, type: "spell", name: "学食", atk: "-", dfn: "-", rarity: 2, ability: "呪文カード", effect: "自分のフィールドのすべてのティーチャーの攻撃力を+100する。" },
             { id: 106, type: "spell", name: "おがぢの大福帳", atk: "-", dfn: "-", rarity: 4, ability: "呪文カード", effect: "「おがぢ」を呼び出し、効果を発動する。" },
-            { id: 107, type: "spell", name: "薄井の復讐", atk: "-", dfn: "-", rarity: 5, ability: "呪文カード", effect: "味方の先生1体を選択し「道連れ」を付与。倒した相手を即死させる。" },
+            { id: 107, type: "spell", name: "薄井の復讐カード", atk: "-", dfn: "-", rarity: 5, ability: "呪文カード", effect: "味方の先生1体を選択し「道連れ」を付与。倒した相手を即死させる。" },
             { id: 108, type: "spell", name: "ハンダごて", atk: "-", dfn: "-", rarity: 2, ability: "呪文カード", effect: "相手を「やけど」状態にする（進化: やけど100→大やけど200→超やけど300）。" },
             { id: 109, type: "spell", name: "トグルスイッチ", atk: "-", dfn: "-", rarity: 4, ability: "呪文カード", effect: "トグルスイッチ作動で大爆発。敵味方すべての先生と建物に1000ダメージ。" },
             { id: 110, type: "spell", name: "学生課", atk: "-", dfn: "-", rarity: 5, ability: "呪文カード", effect: "フィールド上の敵味方すべてのティーチャーが死亡する。" },
             { id: 111, type: "spell", name: "掃除", atk: "-", dfn: "-", rarity: 1, ability: "呪文カード", effect: "手札から不要なカードをタップ選択で1枚削除できる。" },
             { id: 112, type: "spell", name: "クラスマッチ", atk: "-", dfn: "-", rarity: 3, ability: "呪文カード", effect: "相手ティーチャー全員を1ターンの間「睡眠（攻撃で起きる）」状態にする。" },
             { id: 113, type: "spell", name: "高専祭", atk: "-", dfn: "-", rarity: 5, ability: "呪文カード", effect: "敵味方すべてのティーチャーを2ターンの間「睡眠」状態にする。" },
-            { id: 114, type: "spell", name: "薄井の読書感想", atk: "-", dfn: "-", rarity: 5, ability: "呪文カード", effect: "「薄井」を呼び出し、効果を発動する。" },
-            { id: 115, type: "spell", name: "けむくじゃらボール", atk: "-", dfn: "-", rarity: 3, ability: "呪文カード", effect: "味方1人を選択。ボールを持つ人しか攻撃できなくなる（3ターンで消滅）。" },
+            { id: 114, type: "spell", name: "薄井の読書感想カード", atk: "-", dfn: "-", rarity: 5, ability: "呪文カード", effect: "「薄井」を呼び出し、効果を発動する。" },
+            { id: 115, type: "spell", name: "おがぢのけむくじゃらボール", atk: "-", dfn: "-", rarity: 3, ability: "呪文カード", effect: "味方1人を選択。ボールを持つ人しか攻撃できなくなる（3ターンで消滅）。" },
             { id: 116, type: "spell", name: "7セグメントLED", atk: "-", dfn: "-", rarity: 4, ability: "呪文カード", effect: "相手ティーチャー全員に0〜9ターンの「死の宣告」を付与。" },
             { id: 117, type: "spell", name: "プッシュスイッチ", atk: "-", dfn: "-", rarity: 1, ability: "呪文カード", effect: "プッシュスイッチオン。敵味方すべての先生と建物に500ダメージ。" },
             
@@ -264,7 +264,7 @@
             { id: 203, type: "weapon", name: "オシロスコープ", atk: "+400", dfn: "-", rarity: 4, ability: "武器カード", effect: "味方に装備し攻撃力+400。" },
             { id: 204, type: "weapon", name: "ライントレーサー", atk: "+0", dfn: "-", rarity: 3, ability: "武器カード", effect: "装備した先生の次の攻撃が、ダメージの代わりに相手を3ターンぺちゃんこ（行動不能）にする。" },
             { id: 205, type: "weapon", name: "H8マイコン", atk: "+500", dfn: "-", rarity: 3, ability: "武器カード", effect: "H8マイコンで殴ると痛い。味方に装備し攻撃力+500。" },
-            { id: 206, type: "weapon", name: "あの棒(スクリーン用)", atk: "+0", dfn: "-", rarity: 4, ability: "武器カード", effect: "装備した先生の次の先生への攻撃が確定クリティカル（ダメージ2倍）になる。" },
+            { id: 206, type: "weapon", name: "スクリーンを出すときに使うあの棒", atk: "+0", dfn: "-", rarity: 4, ability: "武器カード", effect: "装備した先生の次の先生への攻撃が確定クリティカル（ダメージ2倍）になる。" },
             { id: 207, type: "weapon", name: "ロッカー", atk: "+0", dfn: "-", rarity: 2, ability: "武器カード", effect: "ロッカーに隠れて安全。味方に防御力0のシールド（耐性+1回）を付与する。" },
             { id: 208, type: "weapon", name: "松坂研のローテーブル", atk: "+0", dfn: "-", rarity: 3, ability: "武器カード", effect: "味方の防御力+1000の強固なシールドを得るが、そのティーチャーは7ターン寝る。" },
             { id: 209, type: "weapon", name: "おがぢのトランプ", atk: "+0", dfn: "-", rarity: 5, ability: "武器カード", effect: "装備した先生の攻撃が、相手フィールド全員への全体攻撃（威力分散）になる。" },
@@ -332,7 +332,6 @@
             if (card.id === 7) card.revivesLeft = 3; g.push(card);
         }
 
-        // ★ 手札のドロー＆スロット固定（左から呪文、建物、武器、先生×3）
         function drawHand(player) {
             let hand = (player === 'A' ? handA : handB); let deck = (player === 'A' ? deckA : deckB); 
             const slotTypes = ['spell', 'building', 'weapon', 'teacher', 'teacher', 'teacher'];
@@ -489,7 +488,7 @@
                 hasCheckedSenriganThisTurn = true;
                 const myField = amIHost ? fieldA : fieldB; const enemyHand = amIHost ? handB : handA;
                 if (myField.some(c => c.id === 9 && !isAbilityBlocked(currentTurn, c))) {
-                    setTimeout(() => { sendCutin("浅原", "私には全て視えている"); let handNames = enemyHand.filter(c=>c).map(c => c.name).join(", "); alert(`👁️ 【浅原の千里眼】\n相手の手札:\n${handNames || "なし"}`); }, 500);
+                    setTimeout(() => { sendCutin("浅原", "私には全て視えている。"); let handNames = enemyHand.filter(c=>c).map(c => c.name).join(", "); alert(`👁️ 【浅原の千里眼】\n相手の手札:\n${handNames || "なし"}`); }, 500);
                 }
             }
             if (!isMyTurn()) hasCheckedSenriganThisTurn = false;
@@ -690,7 +689,7 @@
                 let spellReflected = false;
                 
                 if (akasako && !isAbilityBlocked(currentTurn === 'A'?'B':'A', akasako)) {
-                    sendCutin("赤迫", "はいあうとー！"); 
+                    sendCutin("赤迫", "はいあうとーwww"); 
                     let isGlobalSpell = [109, 110, 113, 117].includes(card.id);
                     if (isGlobalSpell) { logMsg += `\n相手の[赤迫]の「はいあうとー」発動！全体呪文が跳ね返され、${myName}側に2倍になって降りかかる！`; spellReflected = true; } 
                     else { logMsg += `\n相手の[赤迫]の「はいあうとー」発動！呪文が跳ね返ってきた！`; targetField = currentField; tName = myName; }
@@ -752,12 +751,12 @@
                     let isReflected = (targetField === currentField); let ownerPlayer = isReflected ? (currentTurn === 'A' ? 'B' : 'A') : currentTurn; let victimField = isReflected ? currentField : enemyField;
                     
                     if (summonId === 4) {
-                        sendCutin("おがぢ", "哲学対話、しようか"); logMsg += `\n大福帳から「おがぢ」が呼び出された！`;
+                        sendCutin("おがぢ", "哲学対話しましょう。"); logMsg += `\n大福帳から「おがぢ」が呼び出された！`;
                         philosophySpace.push({ card: cloneTeacher, originalPlayer: ownerPlayer, remainingTurns: 2 });
                         for (let i = victimField.length - 1; i >= 0; i--) { if (victimField[i].type === 'teacher' && !victimField[i].inLab) philosophySpace.push({ card: victimField.splice(i, 1)[0], originalPlayer: ownerPlayer==='A'?'B':'A', remainingTurns: 2 }); }
                         logMsg += "\nそのまま「哲学対話」が発動し、場を連れ去った！";
                     } else {
-                        sendCutin("薄井", "お前をつまはじきにしてやる。"); logMsg += `\n読書感想から「薄井」が呼び出された！\n「つまはじき」発動！相手の先生に左から合計2000ダメージ！`;
+                        sendCutin("薄井", "つまはじき"); logMsg += `\n読書感想から「薄井」が呼び出された！\n「つまはじき」発動！相手の先生に左から合計2000ダメージ！`;
                         let remainingDmg = 2000;
                         for (let i = 0; i < victimField.length; i++) {
                             if (remainingDmg <= 0) break; let target = victimField[i];
@@ -792,13 +791,13 @@
             let logMsg = `【${myName}】が [${card.name}] を召喚！`;
             if (card.id === 18) { card.justReturned = false; card.fieldTurns = 1; }
 
-            if (!isAbilityBlocked(currentTurn, card) && card.ability && card.ability !== "-" && card.ability !== "能力なし") {
-                sendCutin(card.name, card.cutin || card.ability);
+            if (!isAbilityBlocked(currentTurn, card) && card.cutin) {
+                sendCutin(card.name, card.cutin);
             }
 
             if (isAbilityBlocked(currentTurn, card)) {
                 let blockedBySidwell = enemyField.some(c => c.id === 6 && !c.inLab);
-                if (blockedBySidwell && card.ability && card.ability !== "-" && card.ability !== "能力なし") { sendCutin("シドウェル", "タメデス！"); }
+                if (blockedBySidwell && card.ability && card.ability !== "-" && card.ability !== "能力なし") { sendCutin("シドウェル", "タメデース"); }
                 logMsg += "\nアビリティは無効化・沈黙された。"; 
             } else {
                 if (card.id === 1) {
@@ -892,12 +891,12 @@
                 addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
             } else if (selectionMode === 'spell_107' && targetMode === 'self') {
                 targetTeacher.hasRevenge = true; currentHand[selectedCardIndex] = null; hasCastSpellThisTurn = true;
-                let logMsg = `【${myName}】が呪文 [薄井の復讐] を発動！\n味方の [${targetTeacher.name}] に道連れ効果を付与した！`;
+                let logMsg = `【${myName}】が呪文 [薄井の復讐カード] を発動！\n味方の [${targetTeacher.name}] に道連れ効果を付与した！`;
                 selectionMode = null; selectedCardIndex = null; document.getElementById('guidance-message').innerText = ""; readyToPlayIndex = null;
                 addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
             } else if (selectionMode === 'spell_115' && targetMode === 'self') {
                 targetTeacher.ballTurns = 3; currentHand[selectedCardIndex] = null; hasCastSpellThisTurn = true;
-                let logMsg = `【${myName}】が呪文 [けむくじゃらボール] を発動！\n[${targetTeacher.name}] にボールを渡した！彼しか動けない！`;
+                let logMsg = `【${myName}】が呪文 [おがぢのけむくじゃらボール] を発動！\n[${targetTeacher.name}] にボールを渡した！彼しか動けない！`;
                 selectionMode = null; selectedCardIndex = null; document.getElementById('guidance-message').innerText = ""; readyToPlayIndex = null;
                 addLog(logMsg); sendState(logMsg); updateScreen(); checkGameOver();
             } else if (selectionMode === 'lab') {
@@ -1032,11 +1031,11 @@
                 
                 if (defender.id === 5) { 
                     if (isHokenshitsuActive()) { } 
-                    else { sendCutin("ジョージ", "諸君ら"); attackers.forEach(card => { card.hanseibunTurns = 2; }); }
+                    else { sendCutin("ジョージ", "そこの連中"); attackers.forEach(card => { card.hanseibunTurns = 2; }); }
                 }
                 
                 if (isDefenderDestroyed && isRevengeActive) {
-                    sendCutin("薄井の復讐", "道連れにしてやる！");
+                    sendCutin("薄井", "道連れ");
                     attackers.forEach((atkCard, i) => { let currentIdx = myField.indexOf(atkCard); if (currentIdx !== -1) { spawnEffectAtElement(`field-card-${amIHost?'A':'B'}-${currentIdx}`, 'explode', i*150); let d = myField.splice(currentIdx, 1)[0]; sendToGraveyard(d, amIHost ? 'A' : 'B'); } });
                 }
             }
@@ -1074,7 +1073,7 @@
                 logMsg += "\nしかし、かくじぃが身代わりになった！";
 
                 if (isKakujiDestroyed && isRevengeActive) {
-                    sendCutin("薄井の復讐", "道連れにしてやる！");
+                    sendCutin("薄井", "道連れ");
                     attackers.forEach((atkCard, i) => { let currentIdx = myField.indexOf(atkCard); if (currentIdx !== -1) { spawnEffectAtElement(`field-card-${amIHost?'A':'B'}-${currentIdx}`, 'explode', i*150); let d = myField.splice(currentIdx, 1)[0]; sendToGraveyard(d, amIHost ? 'A' : 'B'); } });
                 }
             } else {
@@ -1181,7 +1180,7 @@
                 if (isMyTurn()) {
                     const myField = amIHost ? fieldA : fieldB; const enemyHand = amIHost ? handB : handA;
                     if (myField.some(c => c.id === 9 && !isAbilityBlocked(currentTurn, c))) {
-                        sendCutin("浅原", "私には全て視えている"); let handNames = enemyHand.filter(c=>c).map(c => c.name).join(", "); alert(`👁️ 【浅原の千里眼】\n相手の手札:\n${handNames || "なし"}`);
+                        sendCutin("浅原", "私には全て視えている。"); let handNames = enemyHand.filter(c=>c).map(c => c.name).join(", "); alert(`👁️ 【浅原の千里眼】\n相手の手札:\n${handNames || "なし"}`);
                     }
                 }
             }, 500);
@@ -1194,7 +1193,6 @@
                 let msg = `🎉 決着がつきました 🎉\n【 ${winnerStr} 】\n\nゲームを初期状態にリセットします。`;
                 addLog(msg); alert(msg); 
                 
-                // ★ ホストだけがリセットし、ゲストに同期することで「両方後攻になるバグ」を完全に防ぐ
                 if (amIHost) {
                     setTimeout(() => {
                         initGame(); 
