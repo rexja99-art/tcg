@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>先生カードゲーム - AI対戦 ベータ版</title>
+    <title>先生カードゲーム - AI対戦モード</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #fff3e0; margin: 0; padding: 5px; user-select: none; font-size: 13px; overflow-x: hidden; }
-        h1 { font-size: 18px; margin: 5px 0; color: #e65100; }
+        body { font-family: sans-serif; text-align: center; background: #e8f5e9; margin: 0; padding: 5px; user-select: none; font-size: 13px; overflow-x: hidden; }
+        h1 { font-size: 18px; margin: 5px 0; color: #155724; }
         h3 { font-size: 13px; margin: 5px 0; }
         .player-hp-box { background: white; padding: 5px 10px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 3px solid transparent; transition: all 0.2s; font-size: 13px; width: 140px; box-sizing: border-box; }
         .player-name { color: #007bff; font-size: 14px; margin-bottom: 2px; display: block; font-weight: bold; }
@@ -34,17 +34,17 @@
         .shield-hp { font-size: 10px; background: rgba(0,0,0,0.6); padding: 1px 4px; border-radius: 4px; margin-top: 2px; }
         .attack-mark { position: absolute; top: -8px; right: -8px; font-size: 16px; filter: drop-shadow(0 0 2px white); z-index: 6; pointer-events: none; }
         button.action-btn { padding: 8px 16px; font-size: 13px; margin-top: 5px; cursor: pointer; font-weight: bold; }
-        #setup-screen { background: white; padding: 15px; border-radius: 10px; max-width: 400px; width: 90%; margin: 50px auto; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 2px solid #ff9800; }
+        #setup-screen { background: white; padding: 15px; border-radius: 10px; max-width: 400px; width: 90%; margin: 50px auto; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .setup-btn { background: #17a2b8; color: white; border: none; padding: 10px 15px; font-size: 14px; border-radius: 4px; cursor: pointer; margin: 5px; width: 90%; max-width: 250px; }
         .setup-btn:hover { opacity: 0.8; }
         .name-input { padding: 10px; width: 90%; max-width: 250px; font-size: 15px; text-align: center; border: 2px solid #ccc; border-radius: 5px; margin-bottom: 15px; font-weight: bold; }
-        .patch-notes { text-align: left; background: #fff3e0; border: 1px solid #ffcc80; padding: 10px; height: 120px; overflow-y: auto; font-size: 11px; margin-bottom: 10px; border-radius: 5px; line-height: 1.4; color: #e65100; }
+        .patch-notes { text-align: left; background: #f8f9fa; border: 1px solid #ccc; padding: 10px; height: 120px; overflow-y: auto; font-size: 11px; margin-bottom: 10px; border-radius: 5px; line-height: 1.4; }
         .win-counter { font-size: 16px; font-weight: bold; color: #333; margin: 10px 0; background: #e2e3e5; padding: 5px; border-radius: 5px; }
         @keyframes slashAnim { 0% { transform: translate(-50%, -50%) scale(0.5) rotate(-45deg); opacity: 0; } 50% { transform: translate(-50%, -50%) scale(1.5) rotate(-45deg); opacity: 1; filter: drop-shadow(0 0 10px white); } 100% { transform: translate(-50%, -50%) scale(2) rotate(-45deg); opacity: 0; } }
         @keyframes explodeAnim { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; filter: drop-shadow(0 0 10px red); } 50% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; filter: drop-shadow(0 0 20px orange); } 100% { transform: translate(-50%, -50%) scale(2); opacity: 0; } }
         .damage-shake { animation: shake 0.4s both; background-color: #ffcccc !important; border-color: #dc3545 !important; }
         @keyframes shake { 10%, 90% { transform: translate3d(-2px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-8px, 0, 0); } 40%, 60% { transform: translate3d(8px, 0, 0); } }
-        .version-badge { background: #ff9800; color: #fff; font-size: 12px; padding: 3px 8px; border-radius: 12px; vertical-align: middle; margin-left: 5px; display: inline-block; }
+        .version-badge { background: #dc3545; color: #fff; font-size: 12px; padding: 3px 8px; border-radius: 12px; vertical-align: middle; margin-left: 5px; display: inline-block; }
         @keyframes cutinAnim { 0% { transform: translateX(-100%) skewX(-15deg); opacity: 0; } 12%, 88% { transform: translateX(0) skewX(-15deg); opacity: 1; } 100% { transform: translateX(100%) skewX(-15deg); opacity: 0; } }
         .cutin-box { position: fixed; top: 35%; left: 0; width: 100%; background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(220,53,69,0.9) 20%, rgba(220,53,69,0.9) 80%, rgba(0,0,0,0) 100%); color: white; z-index: 10000; padding: 15px 0; text-align: center; animation: cutinAnim 2s forwards; pointer-events: none; border-top: 2px solid #ffc107; border-bottom: 2px solid #ffc107; }
         .sound-setting { font-weight: bold; font-size: 14px; margin: 8px 0 12px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
@@ -55,11 +55,11 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">🧪 ベータ版 Ver 31.9</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">安定版 Ver 2.4</span></h1>
         <div class="patch-notes">
-            <strong>🧪 最新のテスト環境です</strong><br>
-            ・🔊 <b>効果音改善</b>：攻撃「バシっ」・カットイン「シャキーン」・選択「クリック」。設定はホーム画面で変更。<br>
-            ・✨ <b>カットイン</b>：重ならず順番表示（2秒）。<br>
+            <strong>🤖 AIモードの特徴</strong><br>
+            ・🔊 <b>効果音</b>：スキル＝刀抜き、攻撃＝はりせん、撃破＝仏壇チーン＋フェードアウト（ホームで設定）。<br>
+            ・✨ <b>カットイン</b>：重ならず順番表示（2秒）。みとけ・タメデスは発動のたび表示。<br>
             ・🏀 <b>体育三兄弟</b>・🏪 <b>売店呪文化</b>・🤖 <b>AI安全装置</b> 対応済み。
         </div>
 
@@ -90,9 +90,9 @@
             <input type="checkbox" id="sound-enabled-check" onchange="syncSoundSetting()"> 🔊 効果音を有効にする
         </label>
         <br>
-        <button class="setup-btn" style="background: #e65100;" onclick="startAiMode()">🤖 ベータ版で対戦スタート！</button>
+        <button class="setup-btn" style="background: #28a745;" onclick="startAiMode()">🤖 AIと対戦スタート！</button>
         <hr style="border: 0; border-top: 1px solid #ccc; margin: 15px 0;">
-        <button class="setup-btn" style="background: #28a745;" onclick="location.href='ai.html'">安定版（AI対戦）へ戻る ➡️</button>
+        <button class="setup-btn" style="background: #e65100;" onclick="location.href='ai_beta.html'">🧪 ベータ版（新カード試験）へ ➡️</button>
         <br>
         <button class="setup-btn" style="background: #6c757d; margin-top: 5px;" onclick="location.href='index.html'">🌐 オンライン対戦版へ戻る ➡️</button>
     </div>
@@ -181,49 +181,83 @@
             try {
                 const ctx = ensureAudioCtx();
                 const now = ctx.currentTime;
-                if (preset === 'bash') {
-                    const dur = 0.09;
+                if (preset === 'harisen') {
+                    const dur = 0.07;
                     const bufLen = Math.floor(ctx.sampleRate * dur);
                     const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
                     const ch = buf.getChannelData(0);
-                    for (let i = 0; i < bufLen; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / bufLen);
+                    for (let i = 0; i < bufLen; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufLen, 0.4);
                     const noise = ctx.createBufferSource();
                     noise.buffer = buf;
                     const bpf = ctx.createBiquadFilter();
                     bpf.type = 'bandpass';
-                    bpf.frequency.value = 900;
-                    bpf.Q.value = 0.7;
-                    const nGain = ctx.createGain();
-                    nGain.gain.setValueAtTime(0.4, now);
-                    nGain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+                    bpf.frequency.value = 2800;
+                    bpf.Q.value = 1.5;
+                    const ng = ctx.createGain();
+                    ng.gain.setValueAtTime(0.5, now);
+                    ng.gain.exponentialRampToValueAtTime(0.001, now + dur);
                     noise.connect(bpf);
-                    bpf.connect(nGain);
-                    nGain.connect(ctx.destination);
+                    bpf.connect(ng);
+                    ng.connect(ctx.destination);
                     noise.start(now);
                     noise.stop(now + dur);
-                    const thump = ctx.createOscillator();
-                    thump.type = 'sine';
-                    thump.frequency.setValueAtTime(200, now);
-                    thump.frequency.exponentialRampToValueAtTime(55, now + 0.07);
-                    const tGain = ctx.createGain();
-                    tGain.gain.setValueAtTime(0.28, now);
-                    tGain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
-                    thump.connect(tGain);
-                    tGain.connect(ctx.destination);
-                    thump.start(now);
-                    thump.stop(now + 0.07);
-                } else if (preset === 'shakiin') {
-                    [2400, 3600, 4800].forEach((freq, i) => {
+                    const snap = ctx.createOscillator();
+                    snap.type = 'square';
+                    snap.frequency.setValueAtTime(2200, now);
+                    snap.frequency.exponentialRampToValueAtTime(350, now + 0.045);
+                    const sg = ctx.createGain();
+                    sg.gain.setValueAtTime(0.12, now);
+                    sg.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    snap.connect(sg);
+                    sg.connect(ctx.destination);
+                    snap.start(now);
+                    snap.stop(now + 0.05);
+                } else if (preset === 'swordDraw') {
+                    const dur = 0.38;
+                    const bufLen = Math.floor(ctx.sampleRate * dur);
+                    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+                    const ch = buf.getChannelData(0);
+                    for (let i = 0; i < bufLen; i++) {
+                        const p = i / bufLen;
+                        ch[i] = (Math.random() * 2 - 1) * (0.4 + p * 0.6) * (1 - p * 0.2);
+                    }
+                    const noise = ctx.createBufferSource();
+                    noise.buffer = buf;
+                    const hp = ctx.createBiquadFilter();
+                    hp.type = 'highpass';
+                    hp.frequency.setValueAtTime(600, now);
+                    hp.frequency.linearRampToValueAtTime(5000, now + 0.28);
+                    const ng = ctx.createGain();
+                    ng.gain.setValueAtTime(0.12, now);
+                    ng.gain.exponentialRampToValueAtTime(0.001, now + dur);
+                    noise.connect(hp);
+                    hp.connect(ng);
+                    ng.connect(ctx.destination);
+                    noise.start(now);
+                    noise.stop(now + dur);
+                    const ring = ctx.createOscillator();
+                    ring.type = 'triangle';
+                    ring.frequency.setValueAtTime(150, now + 0.04);
+                    ring.frequency.exponentialRampToValueAtTime(1400, now + 0.22);
+                    const rg = ctx.createGain();
+                    rg.gain.setValueAtTime(0.14, now + 0.04);
+                    rg.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+                    ring.connect(rg);
+                    rg.connect(ctx.destination);
+                    ring.start(now + 0.04);
+                    ring.stop(now + 0.38);
+                } else if (preset === 'butsudan') {
+                    [523, 659, 784, 1047].forEach((freq, i) => {
                         const osc = ctx.createOscillator();
                         osc.type = 'sine';
                         osc.frequency.setValueAtTime(freq, now);
                         const g = ctx.createGain();
-                        g.gain.setValueAtTime(0.14 / (i + 1), now);
-                        g.gain.exponentialRampToValueAtTime(0.001, now + 0.55 - i * 0.04);
+                        g.gain.setValueAtTime(0.16 / (i + 1), now);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + 2.0 - i * 0.15);
                         osc.connect(g);
                         g.connect(ctx.destination);
                         osc.start(now);
-                        osc.stop(now + 0.55);
+                        osc.stop(now + 2.0);
                     });
                 } else if (preset === 'click') {
                     const osc = ctx.createOscillator();
@@ -264,7 +298,7 @@
             if (cutinPlaying || cutinQueue.length === 0) return;
             cutinPlaying = true;
             const { ability, effect } = cutinQueue.shift();
-            playSynthSound('shakiin');
+            playSynthSound('swordDraw');
             const box = document.createElement('div');
             box.className = 'cutin-box';
             box.innerHTML = `<div class="cutin-name">${ability}</div><div class="cutin-text">${effect}</div>`;
@@ -314,7 +348,7 @@
             const el = document.getElementById(elId); if (!el) return;
             const rect = el.getBoundingClientRect(); const x = rect.left + window.scrollX + rect.width / 2; const y = rect.top + window.scrollY + rect.height / 2;
             setTimeout(() => {
-                if (type === 'slash') playSynthSound('bash');
+                if (type === 'slash') playSynthSound('harisen');
                 const fx = document.createElement('div'); fx.innerText = type === 'slash' ? '⚔️' : '💥';
                 fx.style.position = 'absolute'; fx.style.left = x + 'px'; fx.style.top = y + 'px'; fx.style.pointerEvents = 'none'; fx.style.zIndex = '9999'; fx.style.fontSize = '60px';
                 fx.style.animation = type === 'slash' ? 'slashAnim 0.3s ease-out forwards' : 'explodeAnim 0.5s ease-out forwards';
@@ -324,12 +358,23 @@
 
         function spawnDeathEffect(elId) {
             const el = document.getElementById(elId); if (!el) return;
-            const rect = el.getBoundingClientRect(); const clone = el.cloneNode(true);
-            clone.style.position = 'absolute'; clone.style.left = rect.left + window.scrollX + 'px'; clone.style.top = rect.top + window.scrollY + 'px';
-            clone.style.margin = '0'; clone.style.zIndex = '9998'; clone.style.pointerEvents = 'none'; clone.style.transition = "all 0.8s ease-out";
+            playSynthSound('butsudan');
+            const rect = el.getBoundingClientRect();
+            const clone = el.cloneNode(true);
+            clone.style.position = 'absolute';
+            clone.style.left = rect.left + window.scrollX + 'px';
+            clone.style.top = rect.top + window.scrollY + 'px';
+            clone.style.width = rect.width + 'px';
+            clone.style.height = rect.height + 'px';
+            clone.style.margin = '0';
+            clone.style.zIndex = '9998';
+            clone.style.pointerEvents = 'none';
+            clone.style.transition = 'opacity 1.4s ease-out';
+            clone.style.opacity = '1';
             document.body.appendChild(clone);
-            setTimeout(() => { clone.style.opacity = '0'; clone.style.transform = 'translateY(-80px) scale(0.6)'; }, 10);
-            setTimeout(() => clone.remove(), 800);
+            el.style.visibility = 'hidden';
+            requestAnimationFrame(() => { clone.style.opacity = '0'; });
+            setTimeout(() => clone.remove(), 1500);
         }
 
         function sendHurry() {
@@ -446,13 +491,17 @@
             let t = initCardState(base); t.fieldTurns = 2;
             targetField.push(t);
             let msg = `\n🏀 体育館から [${t.name}] が現れた！`;
-            if (t.id === 401 && !isAbilityBlocked(ownerTurn, t)) {
-                sendCardCutin(t);
-                let enemyT = enemyField.filter(c => c.type === 'teacher' && !c.inLab && c.kenonTurns === 0 && c.id !== 11);
-                if (enemyT.length > 0) {
-                    let target = enemyT[Math.floor(Math.random() * enemyT.length)];
-                    target.isPetrified = true;
-                    msg += `\n🪨 [石尾] の効果！相手の [${target.name}] を石化させた！`;
+            if (t.id === 401) {
+                if (!isAbilityBlocked(ownerTurn, t)) {
+                    sendCardCutin(t);
+                    let enemyT = enemyField.filter(c => c.type === 'teacher' && !c.inLab && c.kenonTurns === 0 && c.id !== 11);
+                    if (enemyT.length > 0) {
+                        let target = enemyT[Math.floor(Math.random() * enemyT.length)];
+                        target.isPetrified = true;
+                        msg += `\n🪨 [石尾] の効果！相手の [${target.name}] を石化させた！`;
+                    }
+                } else {
+                    notifySidwellBlock(ownerTurn, t);
                 }
             }
             return msg;
@@ -516,6 +565,23 @@
         function isAbilityBlocked(targetPlayer, card) {
             if (isLibraryActive()) return true; if (card && card.silenceTurns > 0) return true;
             const enemyField = (targetPlayer === 'A') ? fieldB : fieldA; return enemyField.some(c => c.id === 6 && !c.inLab);
+        }
+
+        function isSidwellBlocking(targetPlayer) {
+            const enemyField = (targetPlayer === 'A') ? fieldB : fieldA;
+            return enemyField.some(c => c.id === 6 && !c.inLab && c.kenonTurns === 0);
+        }
+
+        function notifySidwellBlock(targetPlayer, card) {
+            if (!isLibraryActive() && (!card || card.silenceTurns === 0) && isSidwellBlocking(targetPlayer)) {
+                sendCardCutin(cardById(6));
+            }
+        }
+
+        function notifyMitokeActivation(targetField) {
+            if (targetField.some(c => c.id === 3 && !c.inLab && c.kenonTurns === 0)) {
+                sendCardCutin(cardById(3));
+            }
         }
 
         window.endCleanMode = function() {
@@ -1121,8 +1187,12 @@
             
             if (isMyTurn() && !hasCheckedSenriganThisTurn) {
                 hasCheckedSenriganThisTurn = true;
-                if (fieldA.some(c => c.id === 9 && !isAbilityBlocked('A', c) && c.kenonTurns === 0)) {
-                    setTimeout(() => { sendCardCutin(cardById(9)); let handNames = handB.filter(c=>c).map(c => c.name).join(", "); addLog(`👁️ 【浅原の千里眼】AIの手札:\n${handNames || "なし"}`); }, 500);
+                if (fieldA.some(c => c.id === 9 && c.kenonTurns === 0)) {
+                    if (!isAbilityBlocked('A', cardById(9))) {
+                        setTimeout(() => { sendCardCutin(cardById(9)); let handNames = handB.filter(c=>c).map(c => c.name).join(", "); addLog(`👁️ 【浅原の千里眼】AIの手札:\n${handNames || "なし"}`); }, 500);
+                    } else {
+                        notifySidwellBlock('A', cardById(9));
+                    }
                 }
             }
             if (!isMyTurn()) hasCheckedSenriganThisTurn = false;
@@ -1428,6 +1498,8 @@
                     let isGlobalSpell = [109, 110, 113, 117, 118, 120].includes(card.id);
                     if (isGlobalSpell) { logMsg += `\n相手の[赤迫]の「はいあうとー」発動！全体呪文が跳ね返され、味方に2倍になって降りかかる！`; spellReflected = true; } 
                     else { logMsg += `\n相手の[赤迫]の「はいあうとー」発動！呪文が跳ね返ってきた！`; targetField = currentField; }
+                } else if (akasako) {
+                    notifySidwellBlock(currentTurn === 'A' ? 'B' : 'A', akasako);
                 }
                 let tPlayer = (targetField === fieldA) ? 'A' : 'B';
                 
@@ -1531,8 +1603,7 @@
             
             let logMsg = `【${currentTurn==='A'?myName:enemyName}】が [${card.name}] を召喚！`;
             if (isAbilityBlocked(currentTurn, card)) {
-                let blockedBySidwell = enemyField.some(c => c.id === 6 && !c.inLab && c.kenonTurns === 0);
-                if (blockedBySidwell && card.ability && card.ability !== "-" && card.ability !== "能力なし") { sendCardCutin(cardById(6)); }
+                notifySidwellBlock(currentTurn, card);
                 logMsg += "\nアビリティは無効化・沈黙された。"; 
             } else {
                 if (card.ability && card.ability !== "-" && card.ability !== "能力なし") {
@@ -1965,7 +2036,10 @@
                 }
 
                 let kakujiIndex = targetField.findIndex(card => (card.id === 3 || card.isGuardian) && card.kenonTurns === 0);
-                if (kakujiIndex !== -1) { logMsg += `\n身代わり（守護）の先生がプレイヤーへのダメージを庇おうとしたが全体攻撃に巻き込まれた！`; } 
+                if (kakujiIndex !== -1) {
+                    if (targetField[kakujiIndex].id === 3) notifyMitokeActivation(targetField);
+                    logMsg += `\n身代わり（守護）の先生がプレイヤーへのダメージを庇おうとしたが全体攻撃に巻き込まれた！`;
+                } 
                 else {
                     let hpBoxIdStr = targetPlayerStr === 'A' ? 'hp-box-self' : 'hp-box-enemy';
                     spawnEffectAtElement(hpBoxIdStr, 'slash', 0); 
@@ -1979,7 +2053,10 @@
 
             const kakujiIndex = targetField.findIndex(card => (card.id === 3 || card.isGuardian) && card.kenonTurns === 0);
             let defender = targetField[targetCardIndex]; let actualEnemyIndex = targetCardIndex;
-            if (kakujiIndex !== -1 && defender.id !== 3 && !defender.isGuardian && defender.type === 'teacher') { actualEnemyIndex = kakujiIndex; defender = targetField[kakujiIndex]; }
+            if (kakujiIndex !== -1 && defender.id !== 3 && !defender.isGuardian && defender.type === 'teacher') {
+                actualEnemyIndex = kakujiIndex; defender = targetField[kakujiIndex];
+                if (defender.id === 3) notifyMitokeActivation(targetField);
+            }
 
             logMsg = `【${currentTurn==='A'?myName:enemyName}】が ${attackerNames.join(' と ')} で ${targetMode==='self'?'味方の':''}[${defender.name}] に攻撃！`;
             let targetIdStr = `field-card-${targetPlayerStr}-${actualEnemyIndex}`; spawnEffectAtElement(targetIdStr, 'slash', 0); spawnEffectAtElement(targetIdStr, 'explode', 200); 
@@ -2064,6 +2141,7 @@
             let logMsg = `【${currentTurn==='A'?myName:enemyName}】が ${attackerNames.join(' と ')} で ${targetMode==='self'?'自分自身に':'相手プレイヤーに'}ダイレクトアタック！`;
 
             if (kakujiIndex !== -1) {
+                if (targetField[kakujiIndex].id === 3) notifyMitokeActivation(targetField);
                 let kakujiIdStr = `field-card-${targetPlayerStr}-${kakujiIndex}`; spawnEffectAtElement(kakujiIdStr, 'slash', 0); spawnEffectAtElement(kakujiIdStr, 'explode', 200); 
                 const kakuji = targetField[kakujiIndex]; let isKakujiDestroyed = false; let isRevengeActive = kakuji.hasRevenge; kakuji.sleepTurns = 0;
 
@@ -2179,28 +2257,36 @@
                         if (card.ballTurns <= 0) { removeWeapon(card, 210); endTurnMsg += `\n[${card.name}] のボールが消滅した！`; }
                     }
 
-                    if (card.id === 18 && !isAbilityBlocked(currentTurn, card)) {
-                        if (card.justReturned) { card.justReturned = false; card.fieldTurns = 2; } card.fieldTurns--;
-                        if (card.fieldTurns <= 0) { let kato = myField.splice(i, 1)[0]; wanderSpace.push({ card: kato, originalPlayer: currentTurn, remainingTurns: 2 }); endTurnMsg += `\n🚶 [加藤] が徘徊のため戦線離脱した（2ターン除外）。`; }
+                    if (card.id === 18) {
+                        if (!isAbilityBlocked(currentTurn, card)) {
+                            if (card.justReturned) { card.justReturned = false; card.fieldTurns = 2; } card.fieldTurns--;
+                            if (card.fieldTurns <= 0) { let kato = myField.splice(i, 1)[0]; wanderSpace.push({ card: kato, originalPlayer: currentTurn, remainingTurns: 2 }); endTurnMsg += `\n🚶 [加藤] が徘徊のため戦線離脱した（2ターン除外）。`; }
+                        } else notifySidwellBlock(currentTurn, card);
                     }
                 }
             }
 
             myField.forEach(card => {
-                if (card.id === 8 && !isAbilityBlocked(currentTurn, card) && enemyField.length > 0) {
-                    if (!isHokenshitsuActive()) { let t = enemyField.filter(c => c.type === 'teacher' && c.videoTurns === 0 && c.hanseibunTurns === 0 && !c.isPetrified && !c.inLab && c.kenonTurns === 0); if (t.length > 0) { let target = t[Math.floor(Math.random() * t.length)]; target.videoTurns = 1; endTurnMsg += `\n[三谷]の効果！相手の[${target.name}]は動画に夢中！`; } }
+                if (card.id === 8 && enemyField.length > 0) {
+                    if (!isAbilityBlocked(currentTurn, card)) {
+                        if (!isHokenshitsuActive()) { let t = enemyField.filter(c => c.type === 'teacher' && c.videoTurns === 0 && c.hanseibunTurns === 0 && !c.isPetrified && !c.inLab && c.kenonTurns === 0); if (t.length > 0) { let target = t[Math.floor(Math.random() * t.length)]; target.videoTurns = 1; endTurnMsg += `\n[三谷]の効果！相手の[${target.name}]は動画に夢中！`; } }
+                    } else notifySidwellBlock(currentTurn, card);
                 }
-                if (card.id === 19 && !isAbilityBlocked(currentTurn, card)) {
-                    let added = false;
-                    enemyField.forEach(ec => { if (ec.type === 'teacher' && ec.deathSentenceTurns === -1 && !ec.inLab && ec.kenonTurns === 0 && ec.id !== 11) { ec.deathSentenceTurns = 3; added = true; } });
-                    if (added) endTurnMsg += `\n🍜 [田辺先生]の効果！相手の先生に「死の宣告」を付与！`;
+                if (card.id === 19) {
+                    if (!isAbilityBlocked(currentTurn, card)) {
+                        let added = false;
+                        enemyField.forEach(ec => { if (ec.type === 'teacher' && ec.deathSentenceTurns === -1 && !ec.inLab && ec.kenonTurns === 0 && ec.id !== 11) { ec.deathSentenceTurns = 3; added = true; } });
+                        if (added) endTurnMsg += `\n🍜 [田辺先生]の効果！相手の先生に「死の宣告」を付与！`;
+                    } else notifySidwellBlock(currentTurn, card);
                 }
-                if (card.id === 24 && !isAbilityBlocked(currentTurn, card)) {
-                    let enemyHandRef = currentTurn==='A'?handB:handA; let emptyIdx = enemyHandRef.findIndex(c => !c);
-                    if (emptyIdx !== -1) {
-                        enemyHandRef[emptyIdx] = { id: 502, type: "spell", name: "通知", atk: "-", dfn: "-", rarity: 1, ability: "呪文カード", cutin: "通知です。", effect: "効果なし。使うと消える。" };
-                        endTurnMsg += `\n[留学交流室長の畑村]の効果！相手に「通知」を送った！`;
-                    }
+                if (card.id === 24) {
+                    if (!isAbilityBlocked(currentTurn, card)) {
+                        let enemyHandRef = currentTurn==='A'?handB:handA; let emptyIdx = enemyHandRef.findIndex(c => !c);
+                        if (emptyIdx !== -1) {
+                            enemyHandRef[emptyIdx] = { id: 502, type: "spell", name: "通知", atk: "-", dfn: "-", rarity: 1, ability: "呪文カード", cutin: "通知です。", effect: "効果なし。使うと消える。" };
+                            endTurnMsg += `\n[留学交流室長の畑村]の効果！相手に「通知」を送った！`;
+                        }
+                    } else notifySidwellBlock(currentTurn, card);
                 }
             });
 
@@ -2235,10 +2321,12 @@
             }
 
             nextActiveField.forEach(card => {
-                if (card.id === 11 && !isAbilityBlocked(currentTurn, card) && card.kenonTurns === 0) {
-                    if (currentTurn === 'A') { hpA = Math.min(maxHp, hpA+100); poisonA = 0; burnA = 0; } else { hpB = Math.min(maxHp, hpB+100); poisonB = 0; burnB = 0; }
-                    nextActiveField.forEach(ally => { ally.hanseibunTurns = 0; ally.videoTurns = 0; ally.silenceTurns = 0; ally.sleepTurns = 0; ally.pechankoTurns = 0; ally.isPetrified = false; ally.deathSentenceTurns = -1; ally.freezeTurns = 0; ally.bindTurns = 0; });
-                    endTurnMsg += `\n✨[木村]の効果発動！状態異常がすべて浄化されHPが100回復した！`;
+                if (card.id === 11 && card.kenonTurns === 0) {
+                    if (!isAbilityBlocked(currentTurn, card)) {
+                        if (currentTurn === 'A') { hpA = Math.min(maxHp, hpA+100); poisonA = 0; burnA = 0; } else { hpB = Math.min(maxHp, hpB+100); poisonB = 0; burnB = 0; }
+                        nextActiveField.forEach(ally => { ally.hanseibunTurns = 0; ally.videoTurns = 0; ally.silenceTurns = 0; ally.sleepTurns = 0; ally.pechankoTurns = 0; ally.isPetrified = false; ally.deathSentenceTurns = -1; ally.freezeTurns = 0; ally.bindTurns = 0; });
+                        endTurnMsg += `\n✨[木村]の効果発動！状態異常がすべて浄化されHPが100回復した！`;
+                    } else notifySidwellBlock(currentTurn, card);
                 }
             });
             
