@@ -46,7 +46,8 @@
         @keyframes shake { 10%, 90% { transform: translate3d(-2px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-8px, 0, 0); } 40%, 60% { transform: translate3d(8px, 0, 0); } }
         .version-badge { background: #ff9800; color: #fff; font-size: 12px; padding: 3px 8px; border-radius: 12px; vertical-align: middle; margin-left: 5px; display: inline-block; }
         @keyframes cutinAnim { 0% { transform: translateX(-100%) skewX(-15deg); opacity: 0; } 12%, 88% { transform: translateX(0) skewX(-15deg); opacity: 1; } 100% { transform: translateX(100%) skewX(-15deg); opacity: 0; } }
-        .cutin-box { position: fixed; top: 35%; left: 0; width: 100%; background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(220,53,69,0.9) 20%, rgba(220,53,69,0.9) 80%, rgba(0,0,0,0) 100%); color: white; z-index: 10000; padding: 15px 0; text-align: center; animation: cutinAnim 3s forwards; pointer-events: none; border-top: 2px solid #ffc107; border-bottom: 2px solid #ffc107; }
+        .cutin-box { position: fixed; top: 35%; left: 0; width: 100%; background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(220,53,69,0.9) 20%, rgba(220,53,69,0.9) 80%, rgba(0,0,0,0) 100%); color: white; z-index: 10000; padding: 15px 0; text-align: center; animation: cutinAnim 2s forwards; pointer-events: none; border-top: 2px solid #ffc107; border-bottom: 2px solid #ffc107; }
+        #sound-toggle-btn { min-width: 72px; font-size: 12px; padding: 8px 10px; }
         .cutin-name { font-size: 24px; font-weight: 900; margin: 0 0 5px 0; color: #ffc107; text-shadow: 2px 2px 4px black; }
         .cutin-text { font-size: 15px; margin: 0; font-weight: bold; text-shadow: 1px 1px 3px black; line-height: 1.35; padding: 0 12px; }
         #surrender-btn { position: absolute; top: 10px; right: 10px; background: #dc3545; color: white; border: none; border-radius: 5px; padding: 5px 10px; z-index: 1000; cursor: pointer; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
@@ -54,13 +55,12 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">🧪 ベータ版 Ver 31.7</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">🧪 ベータ版 Ver 31.8</span></h1>
         <div class="patch-notes">
             <strong>🧪 最新のテスト環境です</strong><br>
-            ・🏀 <b>体育三兄弟定義追加</b>：石尾・小泉・伊藤こが体育館から正しく出現します。<br>
-            ・🏪 <b>売店を呪文化</b>：掃除と同様に即時発動。レポート・通知は売却不可。<br>
-            ・✨ <b>カットイン表示</b>：アビリティ名＋効果を3秒間表示します。<br>
-            ・🤖 <b>AI安全装置</b>：10秒無操作または同じ行動10回で自動ターン終了。
+            ・✨ <b>カットイン改善</b>：重ならず順番に表示（2秒）。割り込みで文字が消える問題を修正。<br>
+            ・🔊 <b>効果音追加</b>：攻撃・爆発時にサウンド。ターン終了横でオン/オフ切替可能。<br>
+            ・🏀 <b>体育三兄弟</b>・🏪 <b>売店呪文化</b>・🤖 <b>AI安全装置</b> 対応済み。
         </div>
 
         <div class="win-counter">🏆 現在の戦績: あなた <span id="win-player" style="color:#007bff">0</span> - <span id="win-ai" style="color:#dc3545">0</span> AI</div>
@@ -127,8 +127,9 @@
         <div style="font-size:10px; color:#555; margin-bottom:2px;">[万能] [呪文] [武器] [先生] [先生] [先生]</div>
         <div class="hand" id="hand"></div>
         
-        <div style="display: flex; justify-content: center; gap: 10px; margin-top: 5px;">
+        <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 5px;">
             <button class="action-btn" id="end-turn-btn" style="background: #e2e6ea; border: 1px solid #dae0e5; border-radius: 5px;" onclick="triggerNextTurn()">ターン終了</button>
+            <button class="action-btn" id="sound-toggle-btn" style="border: 1px solid #dae0e5; border-radius: 5px;" onclick="toggleSound()" title="効果音のオン/オフ">🔊 音ON</button>
             <button class="action-btn" id="hurry-btn" style="background: #ffc107; color: black; border: none; border-radius: 5px; display: none;" onclick="sendHurry()">💢 早くしろ！</button>
         </div>
     </div>
@@ -160,6 +161,92 @@
         let sakuraTurnsA = 0, sakuraTurnsB = 0;
         let smokingNextTicket = 1, smokingCurrentCall = 1;
 
+        const CUTIN_DURATION = 2000;
+        let cutinQueue = [];
+        let cutinPlaying = false;
+        let soundEnabled = localStorage.getItem('tcgSoundOn') !== 'false';
+        let audioCtx = null;
+
+        function ensureAudioCtx() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            return audioCtx;
+        }
+
+        function playSynthSound(preset) {
+            if (!soundEnabled) return;
+            try {
+                const ctx = ensureAudioCtx();
+                const now = ctx.currentTime;
+                const gain = ctx.createGain();
+                gain.connect(ctx.destination);
+                if (preset === 'slash') {
+                    const osc = ctx.createOscillator();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(520, now);
+                    osc.frequency.exponentialRampToValueAtTime(180, now + 0.12);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                    osc.connect(gain);
+                    osc.start(now);
+                    osc.stop(now + 0.12);
+                } else if (preset === 'explode') {
+                    const osc1 = ctx.createOscillator();
+                    const osc2 = ctx.createOscillator();
+                    osc1.type = 'square';
+                    osc2.type = 'triangle';
+                    osc1.frequency.setValueAtTime(140, now);
+                    osc1.frequency.exponentialRampToValueAtTime(40, now + 0.22);
+                    osc2.frequency.setValueAtTime(90, now);
+                    osc2.frequency.exponentialRampToValueAtTime(30, now + 0.25);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                    osc1.connect(gain);
+                    osc2.connect(gain);
+                    osc1.start(now); osc1.stop(now + 0.25);
+                    osc2.start(now); osc2.stop(now + 0.25);
+                }
+            } catch (e) {}
+        }
+
+        function updateSoundToggleBtn() {
+            const btn = document.getElementById('sound-toggle-btn');
+            if (!btn) return;
+            if (soundEnabled) {
+                btn.innerText = '🔊 音ON';
+                btn.style.background = '#d4edda';
+                btn.style.color = '#155724';
+                btn.style.borderColor = '#c3e6cb';
+            } else {
+                btn.innerText = '🔇 音OFF';
+                btn.style.background = '#f8d7da';
+                btn.style.color = '#721c24';
+                btn.style.borderColor = '#f5c6cb';
+            }
+        }
+
+        window.toggleSound = function() {
+            soundEnabled = !soundEnabled;
+            localStorage.setItem('tcgSoundOn', soundEnabled);
+            if (soundEnabled) ensureAudioCtx();
+            updateSoundToggleBtn();
+        };
+
+        function processCutinQueue() {
+            if (cutinPlaying || cutinQueue.length === 0) return;
+            cutinPlaying = true;
+            const { ability, effect } = cutinQueue.shift();
+            const box = document.createElement('div');
+            box.className = 'cutin-box';
+            box.innerHTML = `<div class="cutin-name">${ability}</div><div class="cutin-text">${effect}</div>`;
+            document.body.appendChild(box);
+            setTimeout(() => {
+                box.remove();
+                cutinPlaying = false;
+                processCutinQueue();
+            }, CUTIN_DURATION);
+        }
+
         // ★ 初期状態の生成
         function initCardState(c) {
             return { 
@@ -179,9 +266,8 @@
         function sendState() {}
         function cardById(id) { return CARD_LIST.find(c => c.id === id) || EXTRA_TEACHERS.find(c => c.id === id); }
         function triggerCutin(ability, effect) {
-            const box = document.createElement('div'); box.className = 'cutin-box';
-            box.innerHTML = `<div class="cutin-name">${ability}</div><div class="cutin-text">${effect}</div>`;
-            document.body.appendChild(box); setTimeout(() => box.remove(), 3000);
+            cutinQueue.push({ ability, effect });
+            processCutinQueue();
         }
         function sendCutin(ability, effect) { triggerCutin(ability, effect); }
         function sendCardCutin(card) {
@@ -199,6 +285,8 @@
             const el = document.getElementById(elId); if (!el) return;
             const rect = el.getBoundingClientRect(); const x = rect.left + window.scrollX + rect.width / 2; const y = rect.top + window.scrollY + rect.height / 2;
             setTimeout(() => {
+                if (type === 'slash') playSynthSound('slash');
+                else if (type === 'explode') playSynthSound('explode');
                 const fx = document.createElement('div'); fx.innerText = type === 'slash' ? '⚔️' : '💥';
                 fx.style.position = 'absolute'; fx.style.left = x + 'px'; fx.style.top = y + 'px'; fx.style.pointerEvents = 'none'; fx.style.zIndex = '9999'; fx.style.fontSize = '60px';
                 fx.style.animation = type === 'slash' ? 'slashAnim 0.3s ease-out forwards' : 'explodeAnim 0.5s ease-out forwards';
@@ -433,6 +521,8 @@
             
             document.getElementById('setup-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'block';
+            updateSoundToggleBtn();
+            ensureAudioCtx();
             addLog(`🤖 AIとの対戦を開始します！`);
             initGame();
         }
@@ -447,6 +537,7 @@
             poisonA = 0; poisonB = 0; burnA = 0; burnB = 0; graveyardA = []; graveyardB = [];
             selectionMode = null; selectedCardIndex = null; readyToPlayIndex = null; hurryCount = 0; hasCheckedSenriganThisTurn = false;
             sakuraTurnsA = 0; sakuraTurnsB = 0; smokingNextTicket = 1; smokingCurrentCall = 1;
+            cutinQueue = []; cutinPlaying = false;
 
             poolsA = { teacher: new BagPool('teacher'), spell: new BagPool('spell'), weapon: new BagPool('weapon'), building: new BagPool('building') };
             poolsB = { teacher: new BagPool('teacher'), spell: new BagPool('spell'), weapon: new BagPool('weapon'), building: new BagPool('building') };
@@ -2140,6 +2231,7 @@
                 }, 1000);
             }
         }
+        updateSoundToggleBtn();
     </script>
 </body>
 </html>
