@@ -47,7 +47,7 @@
         .version-badge { background: #ff9800; color: #fff; font-size: 12px; padding: 3px 8px; border-radius: 12px; vertical-align: middle; margin-left: 5px; display: inline-block; }
         @keyframes cutinAnim { 0% { transform: translateX(-100%) skewX(-15deg); opacity: 0; } 12%, 88% { transform: translateX(0) skewX(-15deg); opacity: 1; } 100% { transform: translateX(100%) skewX(-15deg); opacity: 0; } }
         .cutin-box { position: fixed; top: 35%; left: 0; width: 100%; background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(220,53,69,0.9) 20%, rgba(220,53,69,0.9) 80%, rgba(0,0,0,0) 100%); color: white; z-index: 10000; padding: 15px 0; text-align: center; animation: cutinAnim 2s forwards; pointer-events: none; border-top: 2px solid #ffc107; border-bottom: 2px solid #ffc107; }
-        #sound-toggle-btn { min-width: 72px; font-size: 12px; padding: 8px 10px; }
+        .sound-setting { font-weight: bold; font-size: 14px; margin: 8px 0 12px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
         .cutin-name { font-size: 24px; font-weight: 900; margin: 0 0 5px 0; color: #ffc107; text-shadow: 2px 2px 4px black; }
         .cutin-text { font-size: 15px; margin: 0; font-weight: bold; text-shadow: 1px 1px 3px black; line-height: 1.35; padding: 0 12px; }
         #surrender-btn { position: absolute; top: 10px; right: 10px; background: #dc3545; color: white; border: none; border-radius: 5px; padding: 5px 10px; z-index: 1000; cursor: pointer; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
@@ -55,11 +55,11 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">🧪 ベータ版 Ver 31.8</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">🧪 ベータ版 Ver 31.9</span></h1>
         <div class="patch-notes">
             <strong>🧪 最新のテスト環境です</strong><br>
-            ・✨ <b>カットイン改善</b>：重ならず順番に表示（2秒）。割り込みで文字が消える問題を修正。<br>
-            ・🔊 <b>効果音追加</b>：攻撃・爆発時にサウンド。ターン終了横でオン/オフ切替可能。<br>
+            ・🔊 <b>効果音改善</b>：攻撃「バシっ」・カットイン「シャキーン」・選択「クリック」。設定はホーム画面で変更。<br>
+            ・✨ <b>カットイン</b>：重ならず順番表示（2秒）。<br>
             ・🏀 <b>体育三兄弟</b>・🏪 <b>売店呪文化</b>・🤖 <b>AI安全装置</b> 対応済み。
         </div>
 
@@ -84,6 +84,10 @@
                 <option value="normal" selected>普通</option>
                 <option value="strong">強い (最強)</option>
             </select>
+        </label>
+        <br>
+        <label class="sound-setting">
+            <input type="checkbox" id="sound-enabled-check" onchange="syncSoundSetting()"> 🔊 効果音を有効にする
         </label>
         <br>
         <button class="setup-btn" style="background: #e65100;" onclick="startAiMode()">🤖 ベータ版で対戦スタート！</button>
@@ -129,7 +133,6 @@
         
         <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 5px;">
             <button class="action-btn" id="end-turn-btn" style="background: #e2e6ea; border: 1px solid #dae0e5; border-radius: 5px;" onclick="triggerNextTurn()">ターン終了</button>
-            <button class="action-btn" id="sound-toggle-btn" style="border: 1px solid #dae0e5; border-radius: 5px;" onclick="toggleSound()" title="効果音のオン/オフ">🔊 音ON</button>
             <button class="action-btn" id="hurry-btn" style="background: #ffc107; color: black; border: none; border-radius: 5px; display: none;" onclick="sendHurry()">💢 早くしろ！</button>
         </div>
     </div>
@@ -178,64 +181,90 @@
             try {
                 const ctx = ensureAudioCtx();
                 const now = ctx.currentTime;
-                const gain = ctx.createGain();
-                gain.connect(ctx.destination);
-                if (preset === 'slash') {
+                if (preset === 'bash') {
+                    const dur = 0.09;
+                    const bufLen = Math.floor(ctx.sampleRate * dur);
+                    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+                    const ch = buf.getChannelData(0);
+                    for (let i = 0; i < bufLen; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / bufLen);
+                    const noise = ctx.createBufferSource();
+                    noise.buffer = buf;
+                    const bpf = ctx.createBiquadFilter();
+                    bpf.type = 'bandpass';
+                    bpf.frequency.value = 900;
+                    bpf.Q.value = 0.7;
+                    const nGain = ctx.createGain();
+                    nGain.gain.setValueAtTime(0.4, now);
+                    nGain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+                    noise.connect(bpf);
+                    bpf.connect(nGain);
+                    nGain.connect(ctx.destination);
+                    noise.start(now);
+                    noise.stop(now + dur);
+                    const thump = ctx.createOscillator();
+                    thump.type = 'sine';
+                    thump.frequency.setValueAtTime(200, now);
+                    thump.frequency.exponentialRampToValueAtTime(55, now + 0.07);
+                    const tGain = ctx.createGain();
+                    tGain.gain.setValueAtTime(0.28, now);
+                    tGain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+                    thump.connect(tGain);
+                    tGain.connect(ctx.destination);
+                    thump.start(now);
+                    thump.stop(now + 0.07);
+                } else if (preset === 'shakiin') {
+                    [2400, 3600, 4800].forEach((freq, i) => {
+                        const osc = ctx.createOscillator();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now);
+                        const g = ctx.createGain();
+                        g.gain.setValueAtTime(0.14 / (i + 1), now);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + 0.55 - i * 0.04);
+                        osc.connect(g);
+                        g.connect(ctx.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.55);
+                    });
+                } else if (preset === 'click') {
                     const osc = ctx.createOscillator();
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(520, now);
-                    osc.frequency.exponentialRampToValueAtTime(180, now + 0.12);
-                    gain.gain.setValueAtTime(0.18, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-                    osc.connect(gain);
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(1400, now);
+                    osc.frequency.exponentialRampToValueAtTime(700, now + 0.025);
+                    const g = ctx.createGain();
+                    g.gain.setValueAtTime(0.07, now);
+                    g.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+                    osc.connect(g);
+                    g.connect(ctx.destination);
                     osc.start(now);
-                    osc.stop(now + 0.12);
-                } else if (preset === 'explode') {
-                    const osc1 = ctx.createOscillator();
-                    const osc2 = ctx.createOscillator();
-                    osc1.type = 'square';
-                    osc2.type = 'triangle';
-                    osc1.frequency.setValueAtTime(140, now);
-                    osc1.frequency.exponentialRampToValueAtTime(40, now + 0.22);
-                    osc2.frequency.setValueAtTime(90, now);
-                    osc2.frequency.exponentialRampToValueAtTime(30, now + 0.25);
-                    gain.gain.setValueAtTime(0.2, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-                    osc1.connect(gain);
-                    osc2.connect(gain);
-                    osc1.start(now); osc1.stop(now + 0.25);
-                    osc2.start(now); osc2.stop(now + 0.25);
+                    osc.stop(now + 0.035);
                 }
             } catch (e) {}
         }
 
-        function updateSoundToggleBtn() {
-            const btn = document.getElementById('sound-toggle-btn');
-            if (!btn) return;
-            if (soundEnabled) {
-                btn.innerText = '🔊 音ON';
-                btn.style.background = '#d4edda';
-                btn.style.color = '#155724';
-                btn.style.borderColor = '#c3e6cb';
-            } else {
-                btn.innerText = '🔇 音OFF';
-                btn.style.background = '#f8d7da';
-                btn.style.color = '#721c24';
-                btn.style.borderColor = '#f5c6cb';
-            }
+        function playUserClickSound() {
+            if (soundEnabled && currentTurn === 'A') playSynthSound('click');
         }
 
-        window.toggleSound = function() {
-            soundEnabled = !soundEnabled;
+        function loadSoundSetting() {
+            const chk = document.getElementById('sound-enabled-check');
+            if (chk) chk.checked = soundEnabled;
+        }
+
+        window.syncSoundSetting = function() {
+            const chk = document.getElementById('sound-enabled-check');
+            soundEnabled = chk ? chk.checked : true;
             localStorage.setItem('tcgSoundOn', soundEnabled);
-            if (soundEnabled) ensureAudioCtx();
-            updateSoundToggleBtn();
+            if (soundEnabled) {
+                ensureAudioCtx();
+                playSynthSound('click');
+            }
         };
 
         function processCutinQueue() {
             if (cutinPlaying || cutinQueue.length === 0) return;
             cutinPlaying = true;
             const { ability, effect } = cutinQueue.shift();
+            playSynthSound('shakiin');
             const box = document.createElement('div');
             box.className = 'cutin-box';
             box.innerHTML = `<div class="cutin-name">${ability}</div><div class="cutin-text">${effect}</div>`;
@@ -285,8 +314,7 @@
             const el = document.getElementById(elId); if (!el) return;
             const rect = el.getBoundingClientRect(); const x = rect.left + window.scrollX + rect.width / 2; const y = rect.top + window.scrollY + rect.height / 2;
             setTimeout(() => {
-                if (type === 'slash') playSynthSound('slash');
-                else if (type === 'explode') playSynthSound('explode');
+                if (type === 'slash') playSynthSound('bash');
                 const fx = document.createElement('div'); fx.innerText = type === 'slash' ? '⚔️' : '💥';
                 fx.style.position = 'absolute'; fx.style.left = x + 'px'; fx.style.top = y + 'px'; fx.style.pointerEvents = 'none'; fx.style.zIndex = '9999'; fx.style.fontSize = '60px';
                 fx.style.animation = type === 'slash' ? 'slashAnim 0.3s ease-out forwards' : 'explodeAnim 0.5s ease-out forwards';
@@ -521,8 +549,7 @@
             
             document.getElementById('setup-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'block';
-            updateSoundToggleBtn();
-            ensureAudioCtx();
+            if (soundEnabled) ensureAudioCtx();
             addLog(`🤖 AIとの対戦を開始します！`);
             initGame();
         }
@@ -1018,6 +1045,7 @@
                     cardEl.style.boxShadow = '0 0 15px #dc3545';
                     cardEl.onclick = () => {
                         if(!isMyTurn()) return;
+                        playUserClickSound();
                         let discarded = currentHand[idx]; currentHand[idx] = null;
                         let logMsg = `【自分】が手札から不要な [${discarded.name}] を削除した！`;
                         if(discarded.id !== 501 && discarded.id !== 502) sendToGraveyard(discarded, 'A');
@@ -1029,6 +1057,7 @@
                     cardEl.style.boxShadow = '0 0 15px #28a745';
                     cardEl.onclick = () => {
                         if(!isMyTurn() || card.id === 502) return;
+                        playUserClickSound();
                         let gift = currentHand[idx]; currentHand[idx] = null;
                         let emptyIdx = handB.findIndex(c => !c);
                         if (emptyIdx !== -1) { handB[emptyIdx] = gift; addLog(`【自分】は [${gift.name}] を相手にプレゼントした！`); } 
@@ -1045,6 +1074,7 @@
                         cardEl.style.boxShadow = '0 0 15px #ffc107'; cardEl.style.transform = 'translateY(-5px)';
                         cardEl.onclick = () => {
                             if(!canExecuteAction()) return;
+                            playUserClickSound();
                             let logMsg = executeBaitenSale('A', idx);
                             if (logMsg) { addLog(logMsg); updateScreen(); }
                         };
@@ -1064,7 +1094,7 @@
                             } else if (readyToPlayIndex === idx) { 
                                 cardEl.classList.add('selected-attacker'); cardEl.onclick = () => { if(!isMyTurn()) return; summonCard(idx); }; 
                             } else { 
-                                cardEl.onclick = () => { if(!isMyTurn()) return; readyToPlayIndex = idx; updateScreen(); }; 
+                                cardEl.onclick = () => { if(!isMyTurn()) return; playUserClickSound(); readyToPlayIndex = idx; updateScreen(); }; 
                             }
                         }
                     } else { cardEl.style.opacity = '0.5'; cardEl.style.cursor = 'default'; }
@@ -1262,6 +1292,7 @@
 
         function summonCard(cardIndex) {
             if(!canExecuteAction()) return;
+            if (isMyTurn()) playUserClickSound();
             const currentHand = currentTurn === 'A' ? handA : handB; const currentField = currentTurn === 'A' ? fieldA : fieldB;
             const enemyField = currentTurn === 'A' ? fieldB : fieldA; const card = currentHand[cardIndex];
 
@@ -1716,6 +1747,7 @@
 
         function applySelection(targetIndex, targetMode = 'self') {
             if(!canExecuteAction() || !selectionMode) return;
+            if (isMyTurn()) playUserClickSound();
             const currentHand = currentTurn === 'A' ? handA : handB; const myField = currentTurn === 'A' ? fieldA : fieldB; const enemyField = currentTurn === 'A' ? fieldB : fieldA;
             const targetField = targetMode === 'self' ? myField : enemyField; const targetTeacher = targetField[targetIndex];
             
@@ -1833,7 +1865,7 @@
             return msg;
         }
 
-        function selectAttacker(idx) { if(!canExecuteAction() || selectionMode) return; const pos = attackingCardIndexes.indexOf(idx); if (pos !== -1) attackingCardIndexes.splice(pos, 1); else attackingCardIndexes.push(idx); updateScreen(); }
+        function selectAttacker(idx) { if(!canExecuteAction() || selectionMode) return; if (isMyTurn()) playUserClickSound(); const pos = attackingCardIndexes.indexOf(idx); if (pos !== -1) attackingCardIndexes.splice(pos, 1); else attackingCardIndexes.push(idx); updateScreen(); }
 
         function fightCards(myCardIndexes, targetCardIndex, targetMode) {
             if(!canExecuteAction() || myCardIndexes.length === 0) return; const myField = currentTurn === 'A' ? fieldA : fieldB; 
@@ -2231,7 +2263,7 @@
                 }, 1000);
             }
         }
-        updateSoundToggleBtn();
+        loadSoundSetting();
     </script>
 </body>
 </html>
