@@ -26,8 +26,13 @@
         .card .card-name { font-size: 9.5px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-height: 22px; flex-grow: 1; text-align: left; }
         .card .card-stats { display: flex; gap: 2px; font-size: 8px; background: rgba(255,255,255,0.6); padding: 1px 3px; border-radius: 3px; }
         .card .card-atk { color: #d9534f; } .card .card-dfn { color: #0275d8; }
-        .card .card-ability { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 7.5px; color: #222; padding-top: 2px; }
-        .card .card-effect-detail { display: none; font-size: 7.5px; color: #333; background: #fff; border-radius: 3px; padding: 2px; margin-top: 3px; font-weight: normal; text-align: left; }
+        .card .card-ability { flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; font-size: 7.5px; color: #222; padding-top: 2px; overflow: hidden; min-height: 0; max-height: 26px; }
+        .card:hover .card-ability { max-height: none; overflow: visible; }
+        .card .card-status-compact { font-size: 7px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
+        .card .card-status-full { display: none; text-align: center; width: 100%; }
+        .card:hover .card-status-compact { display: none; }
+        .card:hover .card-status-full { display: block; }
+        .card .card-effect-detail { display: none; font-size: 7.5px; color: #333; background: #fff; border-radius: 3px; padding: 2px; margin-top: 3px; font-weight: normal; text-align: left; width: 100%; box-sizing: border-box; }
         .card:hover .card-effect-detail { display: block; }
         .card.selected-attacker { border: 3px solid #28a745 !important; box-shadow: 0 0 10px #28a745; transform: translateY(-5px); }
         .card-unplayable { opacity: 0.42 !important; filter: grayscale(0.88); cursor: not-allowed !important; }
@@ -86,6 +91,7 @@
                 <option value="weak">弱い</option>
                 <option value="normal" selected>普通</option>
                 <option value="strong">強い (最強)</option>
+                <option value="extreme">ものすごく強い</option>
             </select>
         </label>
         <br>
@@ -274,6 +280,45 @@
                     g.connect(ctx.destination);
                     osc.start(now);
                     osc.stop(now + 0.035);
+                } else if (preset === 'hurry') {
+                    [880, 660, 440].forEach((freq, i) => {
+                        const osc = ctx.createOscillator();
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(freq, now + i * 0.06);
+                        const g = ctx.createGain();
+                        g.gain.setValueAtTime(0.18, now + i * 0.06);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.06 + 0.12);
+                        osc.connect(g);
+                        g.connect(ctx.destination);
+                        osc.start(now + i * 0.06);
+                        osc.stop(now + i * 0.06 + 0.12);
+                    });
+                } else if (preset === 'victory') {
+                    [523, 659, 784, 1047, 1319].forEach((freq, i) => {
+                        const osc = ctx.createOscillator();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + i * 0.1);
+                        const g = ctx.createGain();
+                        g.gain.setValueAtTime(0.2, now + i * 0.1);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.35);
+                        osc.connect(g);
+                        g.connect(ctx.destination);
+                        osc.start(now + i * 0.1);
+                        osc.stop(now + i * 0.1 + 0.35);
+                    });
+                } else if (preset === 'defeat') {
+                    [392, 349, 311, 262].forEach((freq, i) => {
+                        const osc = ctx.createOscillator();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now + i * 0.15);
+                        const g = ctx.createGain();
+                        g.gain.setValueAtTime(0.22, now + i * 0.15);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.5);
+                        osc.connect(g);
+                        g.connect(ctx.destination);
+                        osc.start(now + i * 0.15);
+                        osc.stop(now + i * 0.15 + 0.5);
+                    });
                 }
             } catch (e) {}
         }
@@ -347,9 +392,11 @@
             const useName = card.type === 'spell' || card.type === 'weapon' || card.type === 'building';
             let title = useName ? card.name : card.ability;
             if (!title || title === '-') return;
-            let subtitle = useName
-                ? ((card.ability && card.ability !== '-' && card.ability !== '能力なし') ? card.ability : (card.effect || ''))
-                : (card.effect || '');
+            let subtitle = card.type === 'spell'
+                ? (card.effect || '')
+                : useName
+                    ? ((card.ability && card.ability !== '-' && card.ability !== '能力なし' && card.ability !== '呪文カード' && card.ability !== '武器カード' && card.ability !== '建物カード') ? card.ability : (card.effect || ''))
+                    : (card.effect || '');
             sendCutin(title, subtitle);
         }
 
@@ -394,8 +441,10 @@
 
         function sendHurry() {
             if (hurryCount >= 10) { alert("早くしろ！は1ターンに10回までです。深呼吸して待ちましょう"); return; }
-            hurryCount++; addLog(`💢 【自分】「はやくしろ！！！」（${hurryCount}/10回）`);
-            if (currentTurn === 'B') { setTimeout(() => { addLog(`🤖 敵:【AI先生】「焦らなくても大丈夫ですよ...計算中です」`); }, 500); }
+            hurryCount++;
+            playSynthSound('hurry');
+            addLog(`💢 【自分】「はやくしろ！！！」（${hurryCount}/10回）`);
+            if (currentTurn === 'B') { setTimeout(() => { addLog(`🤖 敵:【${enemyName}】「焦らなくても大丈夫ですよ...計算中です」`); }, 500); }
         }
 
         function surrender() {
@@ -625,7 +674,7 @@
             myName = document.getElementById('player-name-input').value.trim() || "プレイヤー";
             maxHp = parseInt(document.getElementById('hp-select').value) || 5000;
             aiDifficulty = document.getElementById('ai-difficulty').value;
-            let diffStr = aiDifficulty === 'weak' ? '弱い' : (aiDifficulty === 'strong' ? '最強' : '普通');
+            let diffStr = aiDifficulty === 'weak' ? '弱い' : (aiDifficulty === 'strong' ? '最強' : (aiDifficulty === 'extreme' ? 'ものすごく強い' : '普通'));
             enemyName = `AI先生 (${diffStr})`;
             
             document.getElementById('setup-screen').style.display = 'none';
@@ -697,6 +746,77 @@
                 return true;
             }
             return false;
+        }
+
+        function aiTeacherThreatScore(t, field) {
+            if (!t || t.type !== 'teacher' || t.inLab || t.kenonTurns > 0) return 0;
+            let atk = t.isLaughing ? 1 : t.atk;
+            if (t.hasSupaneti) atk *= 2;
+            let s = atk * 2.5 + getEffectiveDfn(t, field);
+            const bonus = { 15: 2800, 6: 2200, 31: 2000, 32: 2000, 25: 1800, 11: 1400, 9: 900, 3: 700, 13: 600, 5: -5000 };
+            if (bonus[t.id]) s += bonus[t.id];
+            if (t.hasRevenge) s += 400;
+            return s;
+        }
+
+        function aiExtremeSpellScore(c, hand) {
+            if (!c || c.type !== 'spell') return -1;
+            const enemies = fieldA.filter(t => t.type === 'teacher' && !t.inLab && t.kenonTurns === 0);
+            const n = enemies.length;
+            let s = 0;
+            if (c.id === 103) s = 700 * n + (hpA < 1500 ? 900 : 0);
+            else if (c.id === 102) s = 300 * n + 200;
+            else if (c.id === 101) s = 100 * n + (n >= 3 ? 300 : 0);
+            else if (c.id === 104) s = poisonA < 3 ? 1300 - poisonA * 120 : 150;
+            else if (c.id === 108) s = burnA < 3 ? 1200 - burnA * 120 : 150;
+            else if (c.id === 105) s = fieldB.filter(t => t.type === 'teacher' && !t.inLab && t.kenonTurns === 0).length * 380;
+            else if (c.id === 112) s = n >= 2 ? 1600 : 500;
+            else if (c.id === 116) s = n >= 1 ? 1400 : 350;
+            else if (c.id === 106 || c.id === 114) s = n >= 2 ? 2100 : 800;
+            else if (c.id === 118 || c.id === 120) s = n >= 1 ? 1100 : 250;
+            else if (c.id === 109) {
+                const myP = fieldB.reduce((a, t) => a + t.atk + t.dfn, 0);
+                const enP = fieldA.reduce((a, t) => a + t.atk + t.dfn, 0);
+                s = (enP > myP + 350 || hpB < 1100) ? 2600 : -400;
+            } else if (c.id === 117) s = n >= 2 ? 1500 : 450;
+            else if (c.id === 110) s = (fieldA.length + fieldB.length >= 4) ? 2300 : -200;
+            else if (c.id === 113) s = n + fieldB.length >= 3 ? 1900 : 350;
+            else if (c.id === 111) s = hand.filter(x => x).length > 4 ? 950 : 150;
+            else if (c.id === 122) s = hand.some(x => x && x.type === 'teacher' && x.id !== 501 && x.id !== 502) ? 1150 : 200;
+            else if (c.id === 107 || c.id === 115) s = fieldB.some(t => t.type === 'teacher' && !t.inLab && t.kenonTurns === 0) ? 850 : 80;
+            else if (c.id === 119) s = enemies.length ? 1700 : 150;
+            else if (c.id === 121) s = hand.some(x => x && x.id === 501) ? 1600 : 80;
+            else if (c.id === 502) s = 40;
+            if (fieldA.some(t => t.id === 15 && !t.inLab && t.kenonTurns === 0) && [104, 108, 101, 102, 103, 112, 116, 119, 106, 114, 118, 120].includes(c.id)) s = Math.floor(s * 0.35);
+            return s;
+        }
+
+        function aiExtremeTeacherScore(c) {
+            if (!c || c.type !== 'teacher') return -1;
+            let s = c.atk * 2.2 + c.dfn + c.rarity * 90;
+            const n = fieldA.filter(t => t.type === 'teacher' && !t.inLab && t.kenonTurns === 0).length;
+            const bonus = {
+                1: n >= 2 ? 3600 : 700, 2: 2900, 13: n >= 2 ? 3300 : 500, 23: 2700, 34: 2500,
+                4: n >= 2 ? 2300 : 450, 14: n ? 1900 : 350, 16: graveyardB.filter(t => t.type === 'teacher').length ? 2100 : 250,
+                17: 1600, 19: 1800, 25: 1700, 28: 1500, 29: 1400, 30: 1300, 11: 1200, 6: 1100,
+                31: 1100, 32: 1000, 21: handB.filter(x => x).length >= 3 ? 2100 : 700, 22: 1600, 27: fieldB.length ? 1700 : 350
+            };
+            if (bonus[c.id]) s += bonus[c.id];
+            if (sakuraTurnsA > 0 && c.id !== 11) s += 450;
+            return s;
+        }
+
+        function aiExtremeWeaponScore(c) {
+            if (!c || c.type !== 'weapon') return -1;
+            let s = c.rarity * 120;
+            const enemies = fieldA.filter(t => t.type === 'teacher' && !t.inLab && t.kenonTurns === 0).length;
+            if (c.id === 210 && enemies >= 2) s += 1800;
+            if (c.id === 206) s += 1400;
+            if (c.id === 211 && fieldA.some(t => t.shieldHP > 0 || t.hasLocker)) s += 1200;
+            if (c.id === 212) s += 500;
+            if (c.id === 209 && enemies >= 2) s += 1000;
+            if (c.id === 205 || c.id === 203) s += 400;
+            return s;
         }
 
         async function processAiTurn() {
@@ -833,12 +953,15 @@
                         }
                     }
                 } 
-                else if (aiDifficulty === 'normal' || aiDifficulty === 'strong') {
-                    let bestSpellIdx = -1;
+                else if (aiDifficulty === 'extreme' || aiDifficulty === 'normal' || aiDifficulty === 'strong') {
+                    let bestSpellIdx = -1; let bestSpellScore = -1;
                     if (!hasCastSpellThisTurn) {
                         for(let i=0; i<handToPlay.length; i++) {
                             let c = handToPlay[i]; if(!c || c.type !== 'spell' || c.type === 'none') continue;
-                            if (c.id === 109 || c.id === 117 || c.id === 110 || c.id === 113) {
+                            if (aiDifficulty === 'extreme') {
+                                let sc = aiExtremeSpellScore(c, handToPlay);
+                                if (sc > bestSpellScore) { bestSpellScore = sc; bestSpellIdx = i; }
+                            } else if (c.id === 109 || c.id === 117 || c.id === 110 || c.id === 113) {
                                 if (aiDifficulty === 'strong') {
                                     let myPower = fieldB.reduce((sum, t) => sum + t.atk + t.dfn, 0);
                                     let enemyPower = fieldA.reduce((sum, t) => sum + t.atk + t.dfn, 0);
@@ -853,7 +976,7 @@
                             else if (c.id === 121) { if (handB.some(x=>x && x.id===501)) bestSpellIdx = i; }
                         }
                     }
-                    if (bestSpellIdx !== -1) {
+                    if (bestSpellIdx !== -1 && (aiDifficulty !== 'extreme' || bestSpellScore >= 300)) {
                         let c = handToPlay[bestSpellIdx];
                         if (c.id === 111) {
                             summonCard(bestSpellIdx);
@@ -883,7 +1006,8 @@
                             fieldA.forEach((t, idx) => { if(t.type==='teacher'&&!t.inLab&&t.kenonTurns===0&&t.atk>maxA){maxA=t.atk; tIdx=idx;} });
                             if(tIdx !== -1) { summonCard(bestSpellIdx); applySelection(tIdx, 'enemy'); if (aiFinishAction('spell:119')) break; continue; }
                         } else {
-                            if (aiDifficulty === 'strong' && fieldA.some(t=>t.id===15 && !t.inLab && t.kenonTurns===0)) { /* 赤迫反射回避 */ } 
+                            if (aiDifficulty === 'strong' && fieldA.some(t=>t.id===15 && !t.inLab && t.kenonTurns===0)) { /* 赤迫反射回避 */ }
+                            else if (aiDifficulty === 'extreme' && fieldA.some(t=>t.id===15 && !t.inLab && t.kenonTurns===0) && aiExtremeSpellScore(c, handToPlay) < 800) { /* 極難:低価値呪文は赤迫で見送り */ }
                             else { summonCard(bestSpellIdx); if (aiFinishAction('spell:' + c.id)) break; continue; }
                         }
                     }
@@ -892,11 +1016,13 @@
                         let bestTeacherIdx = -1; let bestScore = -1;
                         for (let i = 0; i < handToPlay.length; i++) {
                             let c = handToPlay[i]; if (!c || c.type !== 'teacher') continue;
-                            let score = c.atk * 2 + c.dfn;
-                            if (c.id === 13 && fieldA.length >= 2) score += 2000;
-                            if (c.id === 1 && fieldA.length >= 2) score += 3000;
-                            if (c.id === 2 || c.id === 23 || c.id === 34) score += 1500;
-                            if (c.id === 4 || c.id === 22 || c.id === 24 || c.id === 25 || c.id === 20 || c.id === 21 || c.id === 26 || c.id === 27 || c.id === 28 || c.id === 29 || c.id === 30 || c.id === 31 || c.id === 32 || c.id === 33) score += 1000;
+                            let score = aiDifficulty === 'extreme' ? aiExtremeTeacherScore(c) : (c.atk * 2 + c.dfn);
+                            if (aiDifficulty !== 'extreme') {
+                                if (c.id === 13 && fieldA.length >= 2) score += 2000;
+                                if (c.id === 1 && fieldA.length >= 2) score += 3000;
+                                if (c.id === 2 || c.id === 23 || c.id === 34) score += 1500;
+                                if (c.id === 4 || c.id === 22 || c.id === 24 || c.id === 25 || c.id === 20 || c.id === 21 || c.id === 26 || c.id === 27 || c.id === 28 || c.id === 29 || c.id === 30 || c.id === 31 || c.id === 32 || c.id === 33) score += 1000;
+                            }
                             if (score > bestScore) { bestScore = score; bestTeacherIdx = i; }
                         }
                         if (bestTeacherIdx !== -1) { summonCard(bestTeacherIdx); if (aiFinishAction('teacher:' + handToPlay[bestTeacherIdx].id)) break; continue; }
@@ -906,9 +1032,11 @@
                         let bestWepIdx = -1; let highestWepScore = -1;
                         for (let i = 0; i < handToPlay.length; i++) {
                             let c = handToPlay[i]; if (!c || c.type !== 'weapon') continue;
-                            let wScore = c.rarity;
-                            if (c.id === 211 && fieldA.some(t=>t.shieldHP>0 || t.hasLocker)) wScore += 10;
-                            if (c.id === 212) wScore += 2;
+                            let wScore = aiDifficulty === 'extreme' ? aiExtremeWeaponScore(c) : c.rarity;
+                            if (aiDifficulty !== 'extreme') {
+                                if (c.id === 211 && fieldA.some(t=>t.shieldHP>0 || t.hasLocker)) wScore += 10;
+                                if (c.id === 212) wScore += 2;
+                            }
                             if (wScore > highestWepScore) { highestWepScore = wScore; bestWepIdx = i; }
                         }
                         let tIdx = -1; let maxA = -1;
@@ -1012,6 +1140,44 @@
                                 } else {
                                     attackPlayerDirectly(attackers, 'enemy'); if (aiFinishAction('attack:strong:direct2')) break; continue;
                                 }
+                            }
+                        }
+                        else if (aiDifficulty === 'extreme') {
+                            const canPierce = attackers.some(a => fieldB[a].isLineTracer || fieldB[a].isPiercing);
+                            if (totalAttackPower >= hpA && enemyBallIdx === -1 && kakujiIdx === -1) {
+                                attackPlayerDirectly(attackers, 'enemy'); if (aiFinishAction('attack:extreme:lethal')) break; continue;
+                            }
+                            if (enemyBallIdx !== -1) { fightCards(attackers, enemyBallIdx, 'enemy'); if (aiFinishAction('attack:extreme:ball')) break; continue; }
+                            if (kakujiIdx !== -1) { fightCards(attackers, kakujiIdx, 'enemy'); if (aiFinishAction('attack:extreme:kakuji')) break; continue; }
+
+                            let bestTargetIdx = -1; let bestTradeScore = -1;
+                            for (let i = 0; i < fieldA.length; i++) {
+                                let t = fieldA[i];
+                                if (t.type === 'teacher' && !t.inLab && t.kenonTurns === 0) {
+                                    let reqAtk = getEffectiveDfn(t, fieldA) + (t.revivesLeft * 280);
+                                    if (t.freezeTurns > 0) reqAtk *= 2;
+                                    if (totalAttackPower > reqAtk || canPierce) {
+                                        let score = aiTeacherThreatScore(t, fieldA);
+                                        if (t.id === 5) score -= 6000;
+                                        if (score > bestTradeScore) { bestTradeScore = score; bestTargetIdx = i; }
+                                    }
+                                }
+                            }
+
+                            if (bestTargetIdx === -1 && buildingStack.length > 0) {
+                                let b = buildingStack[buildingStack.length - 1];
+                                if ([301, 302, 303, 309, 312].includes(b.id)) {
+                                    fightCards(attackers, 0, 'building'); if (aiFinishAction('attack:extreme:building')) break; continue;
+                                }
+                            }
+
+                            if (bestTargetIdx !== -1) {
+                                fightCards(attackers, bestTargetIdx, 'enemy'); if (aiFinishAction('attack:extreme:enemy:' + bestTargetIdx)) break; continue;
+                            } else if (fieldA.some(t => t.id === 5 && !t.inLab && t.kenonTurns === 0)) {
+                                addLog('【AI】ジョージを避けて攻撃を見送った');
+                                if (aiFinishAction('attack:extreme:skip-george')) break; continue;
+                            } else {
+                                attackPlayerDirectly(attackers, 'enemy'); if (aiFinishAction('attack:extreme:direct')) break; continue;
                             }
                         }
                     }
@@ -1159,8 +1325,8 @@
             let pNameB = poisonB === 1 ? '毒' : (poisonB === 2 ? '猛毒' : (poisonB >= 3 ? '超毒' : ''));
             let bNameA = burnA === 1 ? 'やけど' : (burnA === 2 ? '大やけど' : (burnA >= 3 ? '超やけど' : ''));
             let bNameB = burnB === 1 ? 'やけど' : (burnB === 2 ? '大やけど' : (burnB >= 3 ? '超やけど' : ''));
-            let hpAStr = hpA + (poisonA > 0 ? ` (☠️${pNameA})` : "") + (burnA > 0 ? ` (🔥${bNameA})` : "");
-            let hpBStr = hpB + (poisonB > 0 ? ` (☠️${pNameB})` : "") + (burnB > 0 ? ` (🔥${bNameB})` : "");
+            let hpAStr = hpA + (poisonA > 0 ? ` (☠️${pNameA})` : "") + (burnA > 0 ? ` (🔥${bNameA})` : "") + (sakuraTurnsA > 0 ? ` (🌡️検温義務)` : "");
+            let hpBStr = hpB + (poisonB > 0 ? ` (☠️${pNameB})` : "") + (burnB > 0 ? ` (🔥${bNameB})` : "") + (sakuraTurnsB > 0 ? ` (🌡️検温義務)` : "");
 
             document.getElementById('hp-self-text').innerText = hpAStr; document.getElementById('hp-enemy-text').innerText = hpBStr; 
             document.getElementById('hp-bar-self').style.width = `${Math.max(0, hpA)/maxHp * 100}%`; document.getElementById('hp-bar-self').style.background = getHpColor(hpA);
@@ -1325,12 +1491,40 @@
             if (!isMyTurn()) hasCheckedSenriganThisTurn = false;
         }
 
+        function buildCardStatusLines(card) {
+            const lines = [];
+            const push = (text, color) => lines.push({ text, color });
+            if (card.hanseibunTurns > 0) push(`📄反省${card.hanseibunTurns}T`, '#dc3545');
+            else if (card.videoTurns > 0) push(`📺動画${card.videoTurns}T`, '#007bff');
+            else if (card.sleepTurns > 0) push(`💤睡眠${card.sleepTurns}T`, '#6f42c1');
+            else if (card.pechankoTurns > 0) push(`🐾ぺちゃんこ${card.pechankoTurns}T`, '#e83e8c');
+            else if (card.isPetrified) push('🗿石化', '#6c757d');
+            else if (card.silenceTurns > 0 || isLibraryActive()) push('😶沈黙', '#6c757d');
+            else if (card.isSmoking) push('🚬喫煙中', '#555');
+            else if (card.smokeTicket > 0) push(`🎫待ち${card.smokeTicket}`, '#555');
+            if (card.freezeTurns > 0) push(`🥶凍結${card.freezeTurns}T`, '#0dcaf0');
+            if (card.bindTurns > 0) push(`⛓️バインド${card.bindTurns}T`, '#6c757d');
+            if (card.id === 7 && card.revivesLeft > 0) push(`❤️耐性${card.revivesLeft}`, '#28a745');
+            if (card.isGuardian) push('🛡️守護', '#198754');
+            if (card.hasSupaneti) push('💥スパネチ', '#dc3545');
+            if (card.hasRevenge) push('🔥道連れ', '#8b0000');
+            if (card.weapons && card.weapons.some(w => w.id === 210)) push(`🏀ボール${card.ballTurns > 0 ? card.ballTurns + 'T' : ''}`, '#d35400');
+            if (card.deathSentenceTurns >= 0) push(`💀宣告${card.deathSentenceTurns}T`, '#6600cc');
+            if (card.inLab) push('🧪研究中', '#007bff');
+            if (card.isLaughing) push('🤣(笑)攻=1', '#ff00ff');
+            if (card.attacksLeft > 0) push(`⚔️残${card.attacksLeft}回`, '#dc3545');
+            if (card.numbering > 0) push(`🔢${card.numbering}`, '#333');
+            if (lines.length === 0 && card.ability && card.ability !== '-') push(card.ability, '#222');
+            return lines;
+        }
+
         function createCardElement(card, ownerField = null) {
             const cardEl = document.createElement('div'); cardEl.className = 'card';
-            
+            const displayName = card.isLaughing ? `${card.name}(笑)` : card.name;
+
             if (card.kenonTurns > 0) {
                 cardEl.style.opacity = '0.4'; cardEl.style.pointerEvents = 'none';
-                cardEl.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:100%; color:#17a2b8; font-weight:bold; font-size:11px; flex-direction:column;">🌡️検温待機中<br>あと${card.kenonTurns}T</div>`;
+                cardEl.innerHTML = `<div class="card-header"><div class="card-name">${displayName}</div></div><div style="display:flex; justify-content:center; align-items:center; flex-grow:1; color:#17a2b8; font-weight:bold; font-size:9px; flex-direction:column; text-align:center; line-height:1.2;">🌡️検温待機<br>あと${card.kenonTurns}T</div>`;
                 cardEl.style.background = '#e9ecef'; cardEl.style.borderColor = '#17a2b8'; cardEl.style.borderStyle = 'dashed';
                 return cardEl;
             }
@@ -1339,29 +1533,14 @@
             else if (card.type === 'weapon') { cardEl.style.background = '#d4edda'; cardEl.style.borderColor = '#28a745'; }
             else if (card.type === 'building') { cardEl.style.background = '#fff3cd'; cardEl.style.borderColor = '#ffc107'; }
             else if (card.type === 'none') { cardEl.style.background = '#e9ecef'; cardEl.style.borderColor = '#6c757d'; }
-            
-            let abilityText = `<div>${card.ability}</div>`;
-            if (card.hanseibunTurns > 0) abilityText = `<div style="color: #dc3545;">📄反省文<br>あと ${card.hanseibunTurns}T</div>`;
-            else if (card.videoTurns > 0) abilityText = `<div style="color: #007bff;">📺動画視聴<br>あと ${card.videoTurns}T</div>`;
-            else if (card.sleepTurns > 0) abilityText = `<div style="color: #6f42c1;">💤睡眠<br>あと ${card.sleepTurns}T</div>`;
-            else if (card.pechankoTurns > 0) abilityText = `<div style="color: #e83e8c;">🐾ぺちゃんこ<br>あと ${card.pechankoTurns}T</div>`;
-            else if (card.isPetrified) abilityText = `<div style="color: #6c757d;">🗿石化</div>`;
-            else if (card.silenceTurns > 0 || isLibraryActive()) abilityText = `<div style="color: #6c757d;">😶沈黙</div>`;
-            else if (card.isSmoking) abilityText = `<div style="color: #555;">🚬喫煙中</div>`;
-            else if (card.smokeTicket > 0) abilityText = `<div style="color: #555;">🎫順番待ち:${card.smokeTicket}</div>`;
-            else if (card.freezeTurns > 0) abilityText += `<div style="color: #0dcaf0; font-weight:bold;">🥶凍結: ${card.freezeTurns}T</div>`;
-            else if (card.bindTurns > 0) abilityText += `<div style="color: #6c757d; font-weight:bold;">⛓️バインド: ${card.bindTurns}T</div>`;
-            else if (card.id === 7 && card.revivesLeft > 0) abilityText += `<div style="color: #28a745;">❤️耐性: ${card.revivesLeft}回</div>`;
-            
-            if (card.isGuardian) abilityText += `<div style="color: #198754; font-weight:bold; margin-top:2px;">🛡️守護</div>`;
-            if (card.hasSupaneti) abilityText += `<div style="color: #dc3545; font-weight:bold; margin-top:2px;">💥スパネチ待機</div>`;
-            if (card.hasRevenge) abilityText += `<div style="color: #8b0000; font-weight:bold; margin-top:2px;">🔥道連れ🔥</div>`;
-            if (card.weapons && card.weapons.some(w=>w.id===210)) abilityText += `<div style="color: #d35400; font-weight:bold; margin-top:2px;">🏀ボール${card.ballTurns > 0 ? `(あと${card.ballTurns}T)` : ''}</div>`;
-            if (card.deathSentenceTurns >= 0) abilityText += `<div style="color: #6600cc; font-weight:bold; margin-top:2px;">💀宣告: ${card.deathSentenceTurns}T</div>`;
-            if (card.inLab) abilityText += `<div style="color: #007bff; font-weight:bold; margin-top:2px;">🧪研究中</div>`;
-            if (card.isLaughing) abilityText += `<div style="color: #ff00ff; font-weight:bold; margin-top:2px;">🤣(笑) 攻=1</div>`;
-            if (card.attacksLeft > 0) abilityText += `<div style="color: #dc3545; font-weight:bold; margin-top:2px;">⚔️残り${card.attacksLeft}回</div>`;
-            if (card.numbering > 0) abilityText += `<div style="color: #333; font-weight:bold; margin-top:2px;">🔢番号: ${card.numbering}</div>`;
+
+            const statusLines = buildCardStatusLines(card);
+            const compactLine = statusLines[0];
+            const moreCount = statusLines.length > 1 ? statusLines.length - 1 : 0;
+            const compactHtml = compactLine
+                ? `<div class="card-status-compact" style="color:${compactLine.color};">${compactLine.text}${moreCount > 0 ? ` +${moreCount}` : ''}</div>`
+                : `<div class="card-status-compact"></div>`;
+            const fullHtml = statusLines.map(l => `<div style="color:${l.color}; font-size:7px; line-height:1.2;">${l.text}</div>`).join('');
 
             const stars = '★'.repeat(card.rarity); let statsHtml = '';
             if (card.type === 'spell') statsHtml = `<span style="color:#6f42c1;">◆呪文</span>`;
@@ -1374,10 +1553,10 @@
                 let enjoMark = (ownerField && card.type === 'teacher' && isEnjoActive(ownerField) && dfn < card.dfn) ? '🔥' : '';
                 statsHtml = `<span class="card-atk">攻${dAtk}</span><span class="card-dfn">防${dfn}${enjoMark}</span>`;
             }
-            
+
             let weaponsText = card.weapons && card.weapons.length > 0 ? `<div style="font-size:7px; color:#28a745; line-height:1; margin-top:2px; font-weight:bold;">🗡️${card.weapons.map(w=>`${w.name}`).join('<br>')}</div>` : '';
-            cardEl.innerHTML = `<div class="card-header"><div class="card-name">${card.name}</div><div class="card-stats">${statsHtml}</div></div><div style="color: #ffaa00; font-size: 8px; text-align: left;">${stars}${weaponsText}</div><div class="card-ability">${abilityText}<div class="card-effect-detail">${card.effect}</div></div>`;
-            
+            cardEl.innerHTML = `<div class="card-header"><div class="card-name">${displayName}</div><div class="card-stats">${statsHtml}</div></div><div style="color: #ffaa00; font-size: 8px; text-align: left;">${stars}${weaponsText}</div><div class="card-ability">${compactHtml}<div class="card-status-full">${fullHtml}</div><div class="card-effect-detail">${card.effect || ''}</div></div>`;
+
             if (card.shieldHP > 0 || card.hasLocker) {
                 let sHpText = card.shieldHP > 0 ? `<div class="shield-hp">🛡️${card.shieldHP}</div>` : `<div class="shield-hp">🛡️防0</div>`;
                 cardEl.innerHTML += `<div class="shield-overlay">${sHpText}</div>`;
@@ -2495,6 +2674,8 @@
                 let winnerStr = hpA <= 0 && hpB <= 0 ? "引き分け！" : (hpA <= 0 ? `${enemyName} の勝利！` : `${myName} の勝利！`);
                 if (hpB <= 0 && hpA > 0) playerWins++;
                 else if (hpA <= 0 && hpB > 0) aiWins++;
+                if (hpB <= 0 && hpA > 0) playSynthSound('victory');
+                else if (hpA <= 0 && hpB > 0) playSynthSound('defeat');
                 
                 let msg = `🎉 決着がつきました 🎉\n【 ${winnerStr} 】\n\nホーム画面に戻ります。`;
                 addLog(msg);
