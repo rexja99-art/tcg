@@ -54,9 +54,10 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">🧪 ベータ版 Ver 31.4</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">🧪 ベータ版 Ver 31.5</span></h1>
         <div class="patch-notes">
             <strong>🧪 最新のテスト環境です</strong><br>
+            ・🤖 <b>AI安全装置追加</b>：10秒間行動がない場合、または同じ行動を10回繰り返した場合に自動でターン終了します。<br>
             ・🆕 <b>新呪文「ルーブリック」追加</b>：手札のレポートを一掃します。<br>
             ・📄 <b>レポート仕様変更</b>：「無種別」となり、一番右の先生枠を圧迫するように。プレゼントや掃除は可能です。<br>
             ・📉 <b>バランス調整</b>：ボールは2ターン、ライントレーサーは1ターンに下方修正。<br>
@@ -148,7 +149,8 @@
         let handA = [], handB = [], deckA = [], deckB = [], fieldA = [], fieldB = [], buildingStack = [];
         let hasSummonedTeacherThisTurn = false, hasCastSpellThisTurn = false, hasEquippedWeaponThisTurn = false, hasSummonedBuildingThisTurn = false, hasUsedBaitenThisTurn = false;
         let attackingCardIndexes = [], philosophySpace = [], wanderSpace = [], akazuSpace = [];
-        let windowAutoTurnEndTimer = null; 
+        let windowAutoTurnEndTimer = null;
+        let aiIdleTimer = null, aiLastActionTime = 0, aiLastActionSignature = '', aiSameActionCount = 0, aiForceEndTurn = false, aiTurnSession = 0;
         let poisonA = 0, poisonB = 0, burnA = 0, burnB = 0;
         let graveyardA = [], graveyardB = [];
         let selectionMode = null, selectedCardIndex = null, readyToPlayIndex = null;
@@ -307,12 +309,6 @@
             { id: 312, type: "building", name: "喫煙所", atk: "-", dfn: 500, rarity: 3, ability: "建物カード", cutin: "喫煙所で一服するか...", effect: "全先生に整理券を配り喫煙待ち（行動不能）にする。毎ターン1人ずつ吸い終わって復帰する。" }
         ];
 
-        const EXTRA_TEACHERS = [
-            { id: 401, type: "teacher", name: "石尾", atk: 100, dfn: 100, rarity: 2, ability: "石化", cutin: "石尾！カチコチにしてやろう。", effect: "【召喚時】相手のランダムな先生1体を石化（自然治癒なし）させる。" },
-            { id: 402, type: "teacher", name: "小泉", atk: 100, dfn: 100, rarity: 1, ability: "-", cutin: "", effect: "能力なし" },
-            { id: 403, type: "teacher", name: "伊藤こ", atk: 100, dfn: 100, rarity: 1, ability: "-", cutin: "", effect: "能力なし" }
-        ];
-
         class BagPool {
             constructor(type, bag = null) {
                 this.type = type;
@@ -375,6 +371,7 @@
             hasSummonedTeacherThisTurn = false; hasCastSpellThisTurn = false; hasEquippedWeaponThisTurn = false; hasSummonedBuildingThisTurn = false; hasUsedBaitenThisTurn = false;
             attackingCardIndexes = []; philosophySpace = []; wanderSpace = []; akazuSpace = []; 
             if(window.autoTurnEndTimer) { clearTimeout(window.autoTurnEndTimer); window.autoTurnEndTimer = null; }
+            resetAiTurnGuards();
             poisonA = 0; poisonB = 0; burnA = 0; burnB = 0; graveyardA = []; graveyardB = [];
             selectionMode = null; selectedCardIndex = null; readyToPlayIndex = null; hurryCount = 0; hasCheckedSenriganThisTurn = false;
             sakuraTurnsA = 0; sakuraTurnsB = 0; smokingNextTicket = 1; smokingCurrentCall = 1;
@@ -390,13 +387,65 @@
             if (currentTurn === 'B') setTimeout(processAiTurn, 1000);
         }
 
+        function clearAiIdleTimer() {
+            if (aiIdleTimer) { clearInterval(aiIdleTimer); aiIdleTimer = null; }
+        }
+
+        function resetAiTurnGuards() {
+            clearAiIdleTimer();
+            aiLastActionTime = Date.now();
+            aiLastActionSignature = '';
+            aiSameActionCount = 0;
+            aiForceEndTurn = false;
+        }
+
+        function startAiIdleTimer(session) {
+            clearAiIdleTimer();
+            aiLastActionTime = Date.now();
+            aiIdleTimer = setInterval(() => {
+                if (currentTurn !== 'B' || session !== aiTurnSession || aiForceEndTurn) {
+                    clearAiIdleTimer();
+                    return;
+                }
+                if (Date.now() - aiLastActionTime >= 10000) {
+                    aiForceEndTurn = true;
+                    clearAiIdleTimer();
+                    addLog('🤖 AIが10秒間行動しなかったため、自動でターンを終了します。');
+                }
+            }, 500);
+        }
+
+        function aiRegisterAction(signature) {
+            aiLastActionTime = Date.now();
+            if (signature === aiLastActionSignature) aiSameActionCount++;
+            else { aiLastActionSignature = signature; aiSameActionCount = 1; }
+            if (aiSameActionCount >= 10) {
+                aiForceEndTurn = true;
+                clearAiIdleTimer();
+                addLog('🤖 AIが同じ行動を10回繰り返したため、強制的にターンを終了します。');
+                return true;
+            }
+            return false;
+        }
+
         async function processAiTurn() {
             if (currentTurn !== 'B') return;
 
+            aiTurnSession++;
+            const session = aiTurnSession;
+            resetAiTurnGuards();
+            startAiIdleTimer(session);
+
             let actionTaken = true;
-            while (actionTaken && currentTurn === 'B' && hpA > 0 && hpB > 0) {
+            function aiFinishAction(signature) {
+                actionTaken = true;
+                return aiRegisterAction(signature);
+            }
+
+            while (actionTaken && currentTurn === 'B' && hpA > 0 && hpB > 0 && !aiForceEndTurn) {
                 actionTaken = false;
                 await new Promise(r => setTimeout(r, 800));
+                if (aiForceEndTurn) break;
 
                 if (selectionMode === 'present') {
                     let giftIdx = -1; let worstScore = 999;
@@ -415,45 +464,45 @@
                         else { sendToGraveyard(gift, 'B'); addLog(`【敵】から [${gift.name}] をプレゼントされそうになったが、手札がいっぱいで破棄された！`); }
                         selectionMode = null;
                     } else { selectionMode = null; }
-                    actionTaken = true; updateScreen(); continue;
+                    if (aiFinishAction('present')) break; updateScreen(); continue;
                 }
 
                 if (selectionMode === 'teacher_27') {
                     let tIdx = fieldB.findIndex(c => c.type==='teacher' && !c.inLab && c.kenonTurns===0 && !c.isGuardian && c.id !== 27);
                     if(tIdx === -1) tIdx = fieldB.findIndex(c => c.type==='teacher' && !c.inLab && c.kenonTurns===0);
-                    if(tIdx !== -1) { applySelection(tIdx, 'self'); actionTaken = true; continue; }
-                    else { selectionMode = null; actionTaken = true; continue; }
+                    if(tIdx !== -1) { applySelection(tIdx, 'self'); if (aiFinishAction('teacher27:select')) break; continue; }
+                    else { selectionMode = null; if (aiFinishAction('teacher27:skip')) break; continue; }
                 }
 
                 let handToPlay = [...handB];
                 
                 let tIdx = handToPlay.findIndex(c => c && c.id === 502);
-                if (tIdx !== -1 && !hasCastSpellThisTurn) { summonCard(tIdx); actionTaken = true; continue; }
+                if (tIdx !== -1 && !hasCastSpellThisTurn) { summonCard(tIdx); if (aiFinishAction('spell:502')) break; continue; }
 
                 if (aiDifficulty === 'weak') {
                     for (let i = 0; i < handToPlay.length; i++) {
                         let card = handToPlay[i]; if (!card) continue;
                         if (card.type === 'none') continue; 
 
-                        if (card.type === 'teacher' && !hasSummonedTeacherThisTurn) { summonCard(i); actionTaken = true; break; }
-                        if (card.type === 'building' && !hasSummonedBuildingThisTurn) { summonCard(i); actionTaken = true; break; }
+                        if (card.type === 'teacher' && !hasSummonedTeacherThisTurn) { summonCard(i); if (aiFinishAction('weak:teacher:' + card.id)) break; break; }
+                        if (card.type === 'building' && !hasSummonedBuildingThisTurn) { summonCard(i); if (aiFinishAction('weak:building:' + card.id)) break; break; }
                         if (card.type === 'weapon' && !hasEquippedWeaponThisTurn && fieldB.some(c=>c.type==='teacher' && !c.inLab && c.kenonTurns===0)) {
                             let tIdx = fieldB.findIndex(c=>c.type==='teacher' && !c.inLab && c.kenonTurns===0);
-                            if(tIdx !== -1) { summonCard(i); applySelection(tIdx, 'self'); actionTaken = true; break; }
+                            if(tIdx !== -1) { summonCard(i); applySelection(tIdx, 'self'); if (aiFinishAction('weak:weapon:' + card.id)) break; break; }
                         }
                         if (card.type === 'spell' && !hasCastSpellThisTurn) {
                             if (card.id === 111) {
                                 summonCard(i); let dropIdx = handB.findIndex((c, idx) => c && idx !== i);
                                 if(dropIdx !== -1) { let d = handB[dropIdx]; handB[dropIdx] = null; sendToGraveyard(d, 'B'); }
-                                selectionMode=null; selectedCardIndex=null; hasCastSpellThisTurn=true; updateScreen(); actionTaken=true; break;
+                                selectionMode=null; selectedCardIndex=null; hasCastSpellThisTurn=true; updateScreen(); if (aiFinishAction('weak:spell:111')) break; break;
                             } else if (card.id === 107 || card.id === 115) {
                                 let tIdx = fieldB.findIndex(c=>c.type==='teacher' && !c.inLab && c.kenonTurns===0);
-                                if(tIdx !== -1) { summonCard(i); applySelection(tIdx, 'self'); actionTaken=true; break; }
+                                if(tIdx !== -1) { summonCard(i); applySelection(tIdx, 'self'); if (aiFinishAction('weak:spell:' + card.id)) break; break; }
                             } else if (card.id === 119) {
                                 let tIdx = fieldA.findIndex(c=>c.type==='teacher' && !c.inLab && c.kenonTurns===0);
-                                if(tIdx !== -1) { summonCard(i); applySelection(tIdx, 'enemy'); actionTaken=true; break; }
+                                if(tIdx !== -1) { summonCard(i); applySelection(tIdx, 'enemy'); if (aiFinishAction('weak:spell:119')) break; break; }
                             } else {
-                                summonCard(i); actionTaken = true; break;
+                                summonCard(i); if (aiFinishAction('weak:spell:' + card.id)) break; break;
                             }
                         }
                     }
@@ -486,18 +535,18 @@
                                     let d = handB[k]; handB[k] = null; sendToGraveyard(d, 'B'); addLog(`【敵】が不要な [${d.name}] を削除した。`);
                                 }
                             }
-                            selectionMode=null; selectedCardIndex=null; hasCastSpellThisTurn=true; updateScreen(); actionTaken=true; continue;
+                            selectionMode=null; selectedCardIndex=null; hasCastSpellThisTurn=true; updateScreen(); if (aiFinishAction('spell:111')) break; continue;
                         } else if (c.id === 107 || c.id === 115) {
                             let tIdx = -1; let maxA = -1;
                             fieldB.forEach((t, idx) => { if(t.type==='teacher'&&!t.inLab&&t.kenonTurns===0&&t.atk>maxA){maxA=t.atk; tIdx=idx;} });
-                            if(tIdx !== -1) { summonCard(bestSpellIdx); applySelection(tIdx, 'self'); actionTaken=true; continue; }
+                            if(tIdx !== -1) { summonCard(bestSpellIdx); applySelection(tIdx, 'self'); if (aiFinishAction('spell:' + c.id)) break; continue; }
                         } else if (c.id === 119) {
                             let tIdx = -1; let maxA = -1;
                             fieldA.forEach((t, idx) => { if(t.type==='teacher'&&!t.inLab&&t.kenonTurns===0&&t.atk>maxA){maxA=t.atk; tIdx=idx;} });
-                            if(tIdx !== -1) { summonCard(bestSpellIdx); applySelection(tIdx, 'enemy'); actionTaken=true; continue; }
+                            if(tIdx !== -1) { summonCard(bestSpellIdx); applySelection(tIdx, 'enemy'); if (aiFinishAction('spell:119')) break; continue; }
                         } else {
                             if (aiDifficulty === 'strong' && fieldA.some(t=>t.id===15 && !t.inLab && t.kenonTurns===0)) { /* 赤迫反射回避 */ } 
-                            else { summonCard(bestSpellIdx); actionTaken = true; continue; }
+                            else { summonCard(bestSpellIdx); if (aiFinishAction('spell:' + c.id)) break; continue; }
                         }
                     }
 
@@ -512,7 +561,7 @@
                             if (c.id === 4 || c.id === 22 || c.id === 24 || c.id === 25 || c.id === 20 || c.id === 21 || c.id === 26 || c.id === 27 || c.id === 28 || c.id === 29 || c.id === 30 || c.id === 31 || c.id === 32 || c.id === 33) score += 1000;
                             if (score > bestScore) { bestScore = score; bestTeacherIdx = i; }
                         }
-                        if (bestTeacherIdx !== -1) { summonCard(bestTeacherIdx); actionTaken = true; continue; }
+                        if (bestTeacherIdx !== -1) { summonCard(bestTeacherIdx); if (aiFinishAction('teacher:' + handToPlay[bestTeacherIdx].id)) break; continue; }
                     }
 
                     if (!hasEquippedWeaponThisTurn) {
@@ -527,13 +576,13 @@
                         let tIdx = -1; let maxA = -1;
                         fieldB.forEach((t, idx) => { if(t.type==='teacher'&&!t.inLab&&t.kenonTurns===0&&t.atk>maxA){maxA=t.atk; tIdx=idx;} });
                         if(bestWepIdx !== -1 && tIdx !== -1) {
-                            summonCard(bestWepIdx); applySelection(tIdx, 'self'); actionTaken = true; continue;
+                            summonCard(bestWepIdx); applySelection(tIdx, 'self'); if (aiFinishAction('weapon:' + handToPlay[bestWepIdx].id)) break; continue;
                         }
                     }
 
                     if (!hasSummonedBuildingThisTurn) {
                         let buildIdx = handToPlay.findIndex(c => c && c.type === 'building');
-                        if (buildIdx !== -1) { summonCard(buildIdx); actionTaken = true; continue; }
+                        if (buildIdx !== -1) { summonCard(buildIdx); if (aiFinishAction('building:' + handToPlay[buildIdx].id)) break; continue; }
                     }
                 }
                 
@@ -566,7 +615,7 @@
                             if (enemyBallIdx !== -1) fightCards(attackers, enemyBallIdx, 'enemy');
                             else if (kakujiIdx !== -1) fightCards(attackers, kakujiIdx, 'enemy');
                             else attackPlayerDirectly(attackers, 'enemy');
-                            actionTaken = true; continue;
+                            if (aiFinishAction('attack:weak')) break; continue;
                         } 
                         else if (aiDifficulty === 'normal') {
                             if (enemyBallIdx !== -1) fightCards(attackers, enemyBallIdx, 'enemy');
@@ -585,14 +634,14 @@
                                 if (targetIdx !== -1) fightCards(attackers, targetIdx, 'enemy');
                                 else attackPlayerDirectly(attackers, 'enemy');
                             }
-                            actionTaken = true; continue;
+                            if (aiFinishAction('attack:normal')) break; continue;
                         }
                         else if (aiDifficulty === 'strong') {
                             if (totalAttackPower >= hpA && enemyBallIdx === -1 && kakujiIdx === -1) {
-                                attackPlayerDirectly(attackers, 'enemy'); actionTaken = true; continue;
+                                attackPlayerDirectly(attackers, 'enemy'); if (aiFinishAction('attack:strong:direct')) break; continue;
                             }
-                            if (enemyBallIdx !== -1) { fightCards(attackers, enemyBallIdx, 'enemy'); actionTaken = true; continue; }
-                            if (kakujiIdx !== -1) { fightCards(attackers, kakujiIdx, 'enemy'); actionTaken = true; continue; }
+                            if (enemyBallIdx !== -1) { fightCards(attackers, enemyBallIdx, 'enemy'); if (aiFinishAction('attack:strong:ball')) break; continue; }
+                            if (kakujiIdx !== -1) { fightCards(attackers, kakujiIdx, 'enemy'); if (aiFinishAction('attack:strong:kakuji')) break; continue; }
                             
                             let bestTargetIdx = -1; let bestTradeScore = -1;
                             for(let i=0; i<fieldA.length; i++) {
@@ -613,22 +662,28 @@
                             if (bestTargetIdx === -1 && buildingStack.length > 0) {
                                 let b = buildingStack[buildingStack.length - 1];
                                 if (b.id === 301 || b.id === 302 || b.id === 303 || b.id === 309 || b.id === 312) {
-                                    fightCards(attackers, 0, 'building'); actionTaken = true; continue;
+                                    fightCards(attackers, 0, 'building'); if (aiFinishAction('attack:strong:building')) break; continue;
                                 }
                             }
 
                             if (bestTargetIdx !== -1) {
-                                fightCards(attackers, bestTargetIdx, 'enemy'); actionTaken = true; continue;
+                                fightCards(attackers, bestTargetIdx, 'enemy'); if (aiFinishAction('attack:strong:enemy:' + bestTargetIdx)) break; continue;
                             } else {
                                 if (fieldA.some(t => t.id === 5 && !t.inLab && t.kenonTurns === 0)) {
                                     // ジョージを回避
                                 } else {
-                                    attackPlayerDirectly(attackers, 'enemy'); actionTaken = true; continue;
+                                    attackPlayerDirectly(attackers, 'enemy'); if (aiFinishAction('attack:strong:direct2')) break; continue;
                                 }
                             }
                         }
                     }
                 }
+            }
+
+            clearAiIdleTimer();
+            if (aiForceEndTurn) {
+                if (currentTurn === 'B' && hpA > 0 && hpB > 0) triggerNextTurn();
+                return;
             }
 
             if (currentTurn === 'B' && hpA > 0 && hpB > 0) {
@@ -1839,7 +1894,7 @@
             attackingCardIndexes = []; addLog(logMsg); updateScreen(); checkGameOver();
         }
 
-        function triggerNextTurn() { if(!canExecuteAction()) return; if(window.autoTurnEndTimer) { clearTimeout(window.autoTurnEndTimer); window.autoTurnEndTimer = null; } nextTurn(); }
+        function triggerNextTurn() { if(!canExecuteAction()) return; if(window.autoTurnEndTimer) { clearTimeout(window.autoTurnEndTimer); window.autoTurnEndTimer = null; } clearAiIdleTimer(); nextTurn(); }
 
         function nextTurn() {
             selectionMode = null; selectedCardIndex = null; document.getElementById('guidance-message').innerText = ""; readyToPlayIndex = null; hurryCount = 0;
