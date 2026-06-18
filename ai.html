@@ -62,11 +62,11 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">安定版 Ver 3.4</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">安定版 Ver 3.5</span></h1>
         <div class="patch-notes">
-            <strong>📋 変更履歴（Ver 3.4）</strong><br>
-            ・👹 <b>AI難易度「チート」</b>：手札2倍・HP2倍・各カード種別の出牌2倍/ターン<br>
-            ・❤️ <b>Ver 3.3</b>：致命傷耐性が即死系にも有効
+            <strong>📋 変更履歴（Ver 3.5）</strong><br>
+            ・🎚️ <b>AI難易度刷新</b>：かくじぃ級・薄井級・ジョージ級・長峰級を追加（旧チート→長峰級）<br>
+            ・👹 <b>Ver 3.4</b>：AI難易度「チート」
         </div>
 
         <div class="win-counter">🏆 現在の戦績: あなた <span id="win-player" style="color:#007bff">0</span> - <span id="win-ai" style="color:#dc3545">0</span> AI</div>
@@ -84,15 +84,20 @@
             </select>
         </label>
         <br>
-        <label style="font-weight: bold; font-size: 14px; margin-left: 10px;">AIの強さ: 
-            <select id="ai-difficulty" style="padding: 5px; margin-bottom: 10px; border-radius: 5px;">
-                <option value="weak">弱い</option>
-                <option value="normal" selected>普通</option>
-                <option value="strong">強い (最強)</option>
-                <option value="extreme">ものすごく強い</option>
-                <option value="cheat">チート</option>
-            </select>
-        </label>
+        <div style="display:flex; flex-wrap:wrap; justify-content:center; align-items:flex-start; gap:10px; margin:8px auto; max-width:360px;">
+            <label style="font-weight: bold; font-size: 14px;">AIの強さ:
+                <select id="ai-difficulty" onchange="updateAiDifficultyDesc()" style="padding: 5px; margin-left: 4px; border-radius: 5px;">
+                    <option value="weak">弱い</option>
+                    <option value="normal" selected>普通</option>
+                    <option value="strong">強い</option>
+                    <option value="kakuji">かくじぃ級</option>
+                    <option value="usui">薄井級</option>
+                    <option value="george">ジョージ級</option>
+                    <option value="nagamine">長峰級</option>
+                </select>
+            </label>
+            <div id="ai-difficulty-desc" style="font-size:11px; color:#555; text-align:left; line-height:1.4; flex:1; min-width:200px;"></div>
+        </div>
         <br>
         <label class="sound-setting">
             <input type="checkbox" id="sound-enabled-check" onchange="syncSoundSetting()"> 🔊 効果音を有効にする
@@ -373,7 +378,7 @@
                 isPiercing: false, isLaughing: false, attacksLeft: 0, freezeTurns: 0, isGuardian: false,
                 hasSupaneti: false, numbering: 0, bindTurns: 0, isLineTracer: false, isCriticalNext: false,
                 isSpreadAttack: false, kenonHidden: false, baitenAtkTurns: 0,
-                pendingSummonAfterKenon: false, summonOwner: null
+                pendingSummonAfterKenon: false, summonOwner: null, usuiDoubled: false
             };
         }
 
@@ -661,22 +666,29 @@
         function isEnemyInfoHidden() { return whiteboardTurnsA > 0; }
         function isHandLanObscured(player) { return (player === 'A' && lanTurnsA > 0) || (player === 'B' && lanTurnsB > 0); }
 
-        function isAiCheatMode() { return aiDifficulty === 'cheat'; }
+        function isNagamineMode() { return aiDifficulty === 'nagamine'; }
+        function isAiStrongTierDifficulty() { return ['strong', 'kakuji', 'usui', 'george'].includes(aiDifficulty); }
+
+        function applyAiTeacherDifficultyBonus(card) {
+            if (!isAiMode || !fieldB.includes(card) || card.type !== 'teacher') return;
+            if (aiDifficulty === 'kakuji') card.isGuardian = true;
+            if (aiDifficulty === 'usui' && !card.usuiDoubled) { card.atk *= 2; card.usuiDoubled = true; }
+        }
 
         function getPlayerMaxHp(player) {
-            return (player === 'B' && isAiCheatMode()) ? maxHp * 2 : maxHp;
+            return (player === 'B' && isNagamineMode()) ? maxHp * 2 : maxHp;
         }
 
         function getHandConfig(player) {
             const baseSlots = ['any', 'spell', 'weapon', 'teacher', 'teacher', 'teacher'];
-            if (isAiCheatMode() && player === 'B') {
+            if (isNagamineMode() && player === 'B') {
                 return { size: 12, slotTypes: [...baseSlots, ...baseSlots] };
             }
             return { size: 6, slotTypes: baseSlots };
         }
 
         function getBasePlayLimit(player) {
-            return (isAiCheatMode() && player === 'B') ? 2 : 1;
+            return (isNagamineMode() && player === 'B') ? 2 : 1;
         }
 
         function getTeacherPlayLimit(player) {
@@ -738,6 +750,7 @@
             stolen = initCardState(stolen);
             stolen.canAttack = false;
             currentField.push(stolen);
+            if (isAiMode && currentField === fieldB) applyAiTeacherDifficultyBonus(stolen);
             return stolen;
         }
 
@@ -819,11 +832,8 @@
             myName = document.getElementById('player-name-input').value.trim() || "プレイヤー";
             maxHp = parseInt(document.getElementById('hp-select').value) || 5000;
             aiDifficulty = document.getElementById('ai-difficulty').value;
-            let diffStr = aiDifficulty === 'weak' ? '弱い'
-                : (aiDifficulty === 'strong' ? '最強'
-                : (aiDifficulty === 'extreme' ? 'ものすごく強い'
-                : (aiDifficulty === 'cheat' ? 'チート' : '普通')));
-            enemyName = `AI先生 (${diffStr})`;
+            const diffLabels = { weak: '弱い', normal: '普通', strong: '強い', kakuji: 'かくじぃ級', usui: '薄井級', george: 'ジョージ級', nagamine: '長峰級' };
+            enemyName = `AI先生 (${diffLabels[aiDifficulty] || '普通'})`;
             
             document.getElementById('setup-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'block';
@@ -851,7 +861,7 @@
             
             drawHand('A'); drawHand('B'); 
             let firstPlayer = (currentTurn === 'A') ? myName : enemyName; 
-            addLog(`🎲 【${firstPlayer}】の先攻でスタート！(あなたHP: ${maxHp}${isAiCheatMode() ? ` / AI HP: ${getPlayerMaxHp('B')}` : ''})`);
+            addLog(`🎲 【${firstPlayer}】の先攻でスタート！(あなたHP: ${maxHp}${isNagamineMode() ? ` / AI HP: ${getPlayerMaxHp('B')}` : ''})`);
             updateScreen();
             
             if (currentTurn === 'B') setTimeout(processAiTurn, 1000);
@@ -1115,16 +1125,16 @@
                         }
                     }
                 } 
-                else if (aiDifficulty === 'extreme' || aiDifficulty === 'cheat' || aiDifficulty === 'normal' || aiDifficulty === 'strong') {
+                else if (aiDifficulty !== 'weak') {
                     let bestSpellIdx = -1; let bestSpellScore = -1;
                     if (canCastSpellThisTurn()) {
                         for(let i=0; i<handToPlay.length; i++) {
                             let c = handToPlay[i]; if(!c || c.type !== 'spell' || c.type === 'none') continue;
-                            if (aiDifficulty === 'extreme' || aiDifficulty === 'cheat') {
+                            if (isNagamineMode()) {
                                 let sc = aiExtremeSpellScore(c, handToPlay);
                                 if (sc > bestSpellScore) { bestSpellScore = sc; bestSpellIdx = i; }
                             } else if (c.id === 109 || c.id === 117 || c.id === 110 || c.id === 113) {
-                                if (aiDifficulty === 'strong') {
+                                if (isAiStrongTierDifficulty()) {
                                     let myPower = fieldB.reduce((sum, t) => sum + t.atk + t.dfn, 0);
                                     let enemyPower = fieldA.reduce((sum, t) => sum + t.atk + t.dfn, 0);
                                     if (enemyPower > myPower + 500 || hpB < 1000) bestSpellIdx = i; 
@@ -1138,7 +1148,7 @@
                             else if (c.id === 121) { if (handB.some(x=>x && x.id===501)) bestSpellIdx = i; }
                         }
                     }
-                    if (bestSpellIdx !== -1 && ((aiDifficulty !== 'extreme' && aiDifficulty !== 'cheat') || bestSpellScore >= 300)) {
+                    if (bestSpellIdx !== -1 && (!isNagamineMode() || bestSpellScore >= 300)) {
                         let c = handToPlay[bestSpellIdx];
                         if (c.id === 111) {
                             summonCard(bestSpellIdx);
@@ -1168,8 +1178,8 @@
                             fieldA.forEach((t, idx) => { if(t.type==='teacher'&&!t.inLab&&t.kenonTurns===0&&t.atk>maxA){maxA=t.atk; tIdx=idx;} });
                             if(tIdx !== -1) { summonCard(bestSpellIdx); applySelection(tIdx, 'enemy'); if (aiFinishAction('spell:119')) break; continue; }
                         } else {
-                            if (aiDifficulty === 'strong' && fieldA.some(t=>t.id===15 && !t.inLab && t.kenonTurns===0)) { /* 赤迫反射回避 */ }
-                            else if ((aiDifficulty === 'extreme' || aiDifficulty === 'cheat') && fieldA.some(t=>t.id===15 && !t.inLab && t.kenonTurns===0) && aiExtremeSpellScore(c, handToPlay) < 800) { /* 極難:低価値呪文は赤迫で見送り */ }
+                            if (isAiStrongTierDifficulty() && fieldA.some(t=>t.id===15 && !t.inLab && t.kenonTurns===0)) { /* 赤迫反射回避 */ }
+                            else if (isNagamineMode() && fieldA.some(t=>t.id===15 && !t.inLab && t.kenonTurns===0) && aiExtremeSpellScore(c, handToPlay) < 800) { /* 極難:低価値呪文は赤迫で見送り */ }
                             else { summonCard(bestSpellIdx); if (aiFinishAction('spell:' + c.id)) break; continue; }
                         }
                     }
@@ -1178,8 +1188,8 @@
                         let bestTeacherIdx = -1; let bestScore = -1;
                         for (let i = 0; i < handToPlay.length; i++) {
                             let c = handToPlay[i]; if (!c || c.type !== 'teacher') continue;
-                            let score = (aiDifficulty === 'extreme' || aiDifficulty === 'cheat') ? aiExtremeTeacherScore(c) : (c.atk * 2 + c.dfn);
-                            if (aiDifficulty !== 'extreme' && aiDifficulty !== 'cheat') {
+                            let score = isNagamineMode() ? aiExtremeTeacherScore(c) : (c.atk * 2 + c.dfn);
+                            if (!isNagamineMode()) {
                                 if (c.id === 13 && fieldA.length >= 2) score += 2000;
                                 if (c.id === 1 && fieldA.length >= 2) score += 3000;
                                 if (c.id === 2 || c.id === 23 || c.id === 34) score += 1500;
@@ -1195,8 +1205,8 @@
                         for (let i = 0; i < handToPlay.length; i++) {
                             let c = handToPlay[i]; if (!c || c.type !== 'weapon') continue;
                             if (!canEquipWeaponOnField(c.id, fieldB)) continue;
-                            let wScore = (aiDifficulty === 'extreme' || aiDifficulty === 'cheat') ? aiExtremeWeaponScore(c) : c.rarity;
-                            if (aiDifficulty !== 'extreme' && aiDifficulty !== 'cheat') {
+                            let wScore = isNagamineMode() ? aiExtremeWeaponScore(c) : c.rarity;
+                            if (!isNagamineMode()) {
                                 if (c.id === 211 && fieldA.some(t=>t.shieldHP>0 || t.hasLocker)) wScore += 10;
                                 if (c.id === 212) wScore += 2;
                             }
@@ -1265,7 +1275,7 @@
                             }
                             if (aiFinishAction('attack:normal')) break; continue;
                         }
-                        else if (aiDifficulty === 'strong') {
+                        else if (isAiStrongTierDifficulty()) {
                             if (totalAttackPower >= hpA && enemyBallIdx === -1 && kakujiIdx === -1) {
                                 attackPlayerDirectly(attackers, 'enemy'); if (aiFinishAction('attack:strong:direct')) break; continue;
                             }
@@ -1306,14 +1316,14 @@
                                 }
                             }
                         }
-                        else if (aiDifficulty === 'extreme' || aiDifficulty === 'cheat') {
+                        else if (isNagamineMode()) {
                             const canPierce = attackers.some(a => fieldB[a].isLineTracer || fieldB[a].isPiercing);
-                            if (isGuardianBuildingActive()) { fightCards(attackers, 0, 'building'); if (aiFinishAction('attack:extreme:guardian-building')) break; continue; }
+                            if (isGuardianBuildingActive()) { fightCards(attackers, 0, 'building'); if (aiFinishAction('attack:nagamine:guardian-building')) break; continue; }
                             if (totalAttackPower >= hpA && enemyBallIdx === -1 && kakujiIdx === -1) {
-                                attackPlayerDirectly(attackers, 'enemy'); if (aiFinishAction('attack:extreme:lethal')) break; continue;
+                                attackPlayerDirectly(attackers, 'enemy'); if (aiFinishAction('attack:nagamine:lethal')) break; continue;
                             }
-                            if (enemyBallIdx !== -1) { fightCards(attackers, enemyBallIdx, 'enemy'); if (aiFinishAction('attack:extreme:ball')) break; continue; }
-                            if (kakujiIdx !== -1) { fightCards(attackers, kakujiIdx, 'enemy'); if (aiFinishAction('attack:extreme:kakuji')) break; continue; }
+                            if (enemyBallIdx !== -1) { fightCards(attackers, enemyBallIdx, 'enemy'); if (aiFinishAction('attack:nagamine:ball')) break; continue; }
+                            if (kakujiIdx !== -1) { fightCards(attackers, kakujiIdx, 'enemy'); if (aiFinishAction('attack:nagamine:kakuji')) break; continue; }
 
                             let bestTargetIdx = -1; let bestTradeScore = -1;
                             for (let i = 0; i < fieldA.length; i++) {
@@ -1332,17 +1342,17 @@
                             if (bestTargetIdx === -1 && buildingStack.length > 0) {
                                 let b = buildingStack[buildingStack.length - 1];
                                 if (isGuardianBuilding(b) || [301, 302, 303, 309, 312].includes(b.id)) {
-                                    fightCards(attackers, 0, 'building'); if (aiFinishAction('attack:extreme:building')) break; continue;
+                                    fightCards(attackers, 0, 'building'); if (aiFinishAction('attack:nagamine:building')) break; continue;
                                 }
                             }
 
                             if (bestTargetIdx !== -1) {
-                                fightCards(attackers, bestTargetIdx, 'enemy'); if (aiFinishAction('attack:extreme:enemy:' + bestTargetIdx)) break; continue;
+                                fightCards(attackers, bestTargetIdx, 'enemy'); if (aiFinishAction('attack:nagamine:enemy:' + bestTargetIdx)) break; continue;
                             } else if (fieldA.some(t => t.id === 5 && !t.inLab && t.kenonTurns === 0)) {
                                 addLog('【AI】ジョージを避けて攻撃を見送った');
-                                if (aiFinishAction('attack:extreme:skip-george')) break; continue;
+                                if (aiFinishAction('attack:nagamine:skip-george')) break; continue;
                             } else {
-                                attackPlayerDirectly(attackers, 'enemy'); if (aiFinishAction('attack:extreme:direct')) break; continue;
+                                attackPlayerDirectly(attackers, 'enemy'); if (aiFinishAction('attack:nagamine:direct')) break; continue;
                             }
                         }
                     }
@@ -2385,6 +2395,7 @@
                                 else { sendToGraveyard(gift, 'B'); logMsg += `\n【敵】から [${gift.name}] をプレゼントされそうになったが、手札がいっぱいで破棄された！`; }
                             }
                         }
+                        if (isAiMode && currentTurn === 'B' && fieldB.includes(card)) applyAiTeacherDifficultyBonus(card);
                         addLog(logMsg); updateScreen(); return;
                     } else { logMsg += `\nしかしプレゼントするカードがなかった！`; }
                 }
@@ -2424,10 +2435,15 @@
                         } else {
                             let tIdx = fieldB.findIndex(c => c !== card && c.type==='teacher' && !c.inLab && c.kenonTurns===0 && !c.isGuardian);
                             if(tIdx === -1) tIdx = fieldB.findIndex(c => c !== card && c.type==='teacher' && !c.inLab && c.kenonTurns===0);
-                            if(tIdx !== -1) { applySelection(tIdx, 'self'); return; }
+                            if(tIdx !== -1) {
+                                if (isAiMode && fieldB.includes(card)) applyAiTeacherDifficultyBonus(card);
+                                applySelection(tIdx, 'self'); return;
+                            }
                         }
+                        if (isAiMode && fieldB.includes(card)) applyAiTeacherDifficultyBonus(card);
                         addLog(logMsg); updateScreen(); checkGameOver(); return;
                     }
+                    if (isAiMode && fieldB.includes(card)) applyAiTeacherDifficultyBonus(card);
                     logMsg += `\nしかし守護を付与する味方がいなかった！`;
                     addLog(logMsg); updateScreen(); checkGameOver(); return;
                 }
@@ -2502,6 +2518,7 @@
             if (!placedOnField && !currentField.includes(card)) {
                 card.canAttack = false; currentField.push(card); currentHand[cardIndex] = null; markTeacherSummonedThisTurn(); readyToPlayIndex = null;
             }
+            if (isAiMode && currentTurn === 'B' && card.type === 'teacher' && fieldB.includes(card)) applyAiTeacherDifficultyBonus(card);
             addLog(logMsg); updateScreen();
             checkGameOver();
         }
@@ -2877,6 +2894,10 @@
                 spawnEffectAtElement(hpBoxIdStr, 'slash', 0); spawnEffectAtElement(hpBoxIdStr, 'explode', 200); 
                 if (targetMode === 'enemy') { if (currentTurn === 'A') hpB -= totalAtk; else hpA -= totalAtk; } 
                 else { if (currentTurn === 'A') hpA -= totalAtk; else hpB -= totalAtk; }
+                if (isAiMode && aiDifficulty === 'george' && targetMode === 'enemy' && currentTurn === 'A') {
+                    attackers.forEach(card => { if (card.id !== 11) card.hanseibunTurns = 99; });
+                    logMsg += `\n📄 ジョージ級！直接攻撃したあなたの先生全員に反省文99ターン！`;
+                }
             }
             consumeAttackerTurns(attackers); addLog(logMsg); updateScreen(); checkGameOver();
         }
@@ -3072,7 +3093,25 @@
                 }, 1000);
             }
         }
+        function updateAiDifficultyDesc() {
+            const sel = document.getElementById('ai-difficulty');
+            const el = document.getElementById('ai-difficulty-desc');
+            if (!sel || !el) return;
+            const descs = {
+                weak: '手札の順番通りにぎこちなくプレイします。',
+                normal: '状況に応じて呪文・先生・武器を使い分けます。',
+                strong: '有利な交換と致命の一撃を狙う上級AIです。',
+                kakuji: 'AIが出す先生は全員「守護」になります。',
+                usui: 'AIが出す先生の攻撃力が2倍になります。',
+                george: 'あなたの先生が相手プレイヤーへ直接攻撃すると、反省文99ターン（行動不能）になります。',
+                nagamine: '手札2倍・HP2倍・出牌2倍/ターン＋最強の思考ロジック。'
+            };
+            el.textContent = descs[sel.value] || '';
+        }
+        window.updateAiDifficultyDesc = updateAiDifficultyDesc;
+
         loadSoundSetting();
+        updateAiDifficultyDesc();
     </script>
 </body>
 </html>
