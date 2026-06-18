@@ -659,6 +659,24 @@
             return stolen;
         }
 
+        function canEquipWeaponOnField(weaponId, field) {
+            return field.some(t => t.type === 'teacher' && !t.inLab && t.kenonTurns === 0 && !t.weapons.some(w => w.id === weaponId));
+        }
+
+        function findBestWeaponEquipTarget(weaponId, field) {
+            let bestIdx = -1, maxAtk = -1;
+            field.forEach((t, idx) => {
+                if (t.type === 'teacher' && !t.inLab && t.kenonTurns === 0 && !t.weapons.some(w => w.id === weaponId) && t.atk > maxAtk) {
+                    maxAtk = t.atk; bestIdx = idx;
+                }
+            });
+            return bestIdx;
+        }
+
+        function markTeacherSummonedThisTurn() {
+            if (!kenonResolving) hasSummonedTeacherThisTurn = true;
+        }
+
         function isAbilityBlocked(targetPlayer, card) {
             if (card && card.silenceTurns > 0) return true;
             const enemyField = (targetPlayer === 'A') ? fieldB : fieldA;
@@ -932,9 +950,10 @@
                     if (aiFinishAction('clean:cancel')) break; continue;
                 }
                 if (selectionMode === 'weapon') {
-                    let wTIdx = fieldB.findIndex(c => c.type === 'teacher' && !c.inLab && c.kenonTurns === 0);
+                    const weaponCard = selectedCardIndex !== null ? handB[selectedCardIndex] : null;
+                    let wTIdx = weaponCard ? findBestWeaponEquipTarget(weaponCard.id, fieldB) : -1;
                     if (wTIdx !== -1) applySelection(wTIdx, 'self');
-                    else selectionMode = null;
+                    else { selectionMode = null; selectedCardIndex = null; hasEquippedWeaponThisTurn = true; }
                     if (aiFinishAction('weapon:pending')) break; continue;
                 }
                 if (selectionMode === 'spell_107') {
@@ -974,8 +993,8 @@
 
                         if (card.type === 'teacher' && !hasSummonedTeacherThisTurn) { summonCard(i); if (aiFinishAction('weak:teacher:' + card.id)) break; break; }
                         if (card.type === 'building' && !hasSummonedBuildingThisTurn) { summonCard(i); if (aiFinishAction('weak:building:' + card.id)) break; break; }
-                        if (card.type === 'weapon' && !hasEquippedWeaponThisTurn && fieldB.some(c=>c.type==='teacher' && !c.inLab && c.kenonTurns===0)) {
-                            let tIdx = fieldB.findIndex(c=>c.type==='teacher' && !c.inLab && c.kenonTurns===0);
+                        if (card.type === 'weapon' && !hasEquippedWeaponThisTurn && canEquipWeaponOnField(card.id, fieldB)) {
+                            let tIdx = findBestWeaponEquipTarget(card.id, fieldB);
                             if(tIdx !== -1) { summonCard(i); applySelection(tIdx, 'self'); if (aiFinishAction('weak:weapon:' + card.id)) break; break; }
                         }
                         if (card.type === 'spell' && !hasCastSpellThisTurn) {
@@ -1082,6 +1101,7 @@
                         let bestWepIdx = -1; let highestWepScore = -1;
                         for (let i = 0; i < handToPlay.length; i++) {
                             let c = handToPlay[i]; if (!c || c.type !== 'weapon') continue;
+                            if (!canEquipWeaponOnField(c.id, fieldB)) continue;
                             let wScore = aiDifficulty === 'extreme' ? aiExtremeWeaponScore(c) : c.rarity;
                             if (aiDifficulty !== 'extreme') {
                                 if (c.id === 211 && fieldA.some(t=>t.shieldHP>0 || t.hasLocker)) wScore += 10;
@@ -1089,8 +1109,7 @@
                             }
                             if (wScore > highestWepScore) { highestWepScore = wScore; bestWepIdx = i; }
                         }
-                        let tIdx = -1; let maxA = -1;
-                        fieldB.forEach((t, idx) => { if(t.type==='teacher'&&!t.inLab&&t.kenonTurns===0&&t.atk>maxA){maxA=t.atk; tIdx=idx;} });
+                        let tIdx = bestWepIdx !== -1 ? findBestWeaponEquipTarget(handToPlay[bestWepIdx].id, fieldB) : -1;
                         if(bestWepIdx !== -1 && tIdx !== -1) {
                             summonCard(bestWepIdx); applySelection(tIdx, 'self'); if (aiFinishAction('weapon:' + handToPlay[bestWepIdx].id)) break; continue;
                         }
@@ -1360,7 +1379,7 @@
             }
             if (card.type === 'weapon') {
                 if (hasEquippedWeaponThisTurn) return false;
-                return myField.some(c => c.type === 'teacher' && !c.inLab && c.kenonTurns === 0);
+                return myField.some(c => c.type === 'teacher' && !c.inLab && c.kenonTurns === 0 && canEquipWeaponOnField(card.id, myField));
             }
             if (card.type === 'building') {
                 return !hasSummonedBuildingThisTurn;
@@ -2005,7 +2024,7 @@
 
             if (!kenonResolving && needsSakuraKenon(currentTurn, card)) {
                 card.canAttack = false;
-                card.kenonTurns = 2;
+                card.kenonTurns = 1;
                 card.pendingSummonAfterKenon = true;
                 card.kenonHidden = true;
                 card.summonOwner = currentTurn;
@@ -2013,7 +2032,7 @@
                 currentHand[cardIndex] = null;
                 hasSummonedTeacherThisTurn = true;
                 readyToPlayIndex = null;
-                addLog(`🌡️ 【${currentTurn==='A'?myName:enemyName}】が [${card.name}] を召喚！さくら連絡網により検温中…2ターン後に正式に場に出ます。`);
+                addLog(`🌡️ 【${currentTurn==='A'?myName:enemyName}】が [${card.name}] を召喚！さくら連絡網により検温中…1ターン後に正式に場に出ます。`);
                 updateScreen();
                 checkGameOver();
                 return;
@@ -2034,7 +2053,7 @@
                     card.canAttack = false;
                     currentField.push(card);
                     currentHand[cardIndex] = null;
-                    hasSummonedTeacherThisTurn = true;
+                    markTeacherSummonedThisTurn();
                     readyToPlayIndex = null;
                     placedOnField = true;
                     updateScreen();
@@ -2089,7 +2108,7 @@
                     philosophySpace.push({ card: card, originalPlayer: currentTurn, remainingTurns: 2 });
                     let pulledCount = 0;
                     for (let i = enemyField.length - 1; i >= 0; i--) { if (enemyField[i].type === 'teacher' && !enemyField[i].inLab && enemyField[i].kenonTurns === 0) { philosophySpace.push({ card: enemyField.splice(i, 1)[0], originalPlayer: currentTurn==='A'?'B':'A', remainingTurns: 2 }); pulledCount++; } }
-                    currentHand[cardIndex] = null; hasSummonedTeacherThisTurn = true; readyToPlayIndex = null; logMsg += `\n相手の先生を ${pulledCount} 人連れ去り、哲学対話（1ターン）に入った！`; addLog(logMsg); updateScreen(); checkGameOver(); return;
+                    currentHand[cardIndex] = null; markTeacherSummonedThisTurn(); readyToPlayIndex = null; logMsg += `\n相手の先生を ${pulledCount} 人連れ去り、哲学対話（1ターン）に入った！`; addLog(logMsg); updateScreen(); checkGameOver(); return;
                 }
                 if (card.id === 12) { let teachers = enemyField.filter(c => c.type === 'teacher' && !c.inLab && c.kenonTurns === 0); if (teachers.length > 0) { const t = teachers[Math.floor(Math.random() * teachers.length)]; t.atk = 74; t.dfn = 74; logMsg += `\n[${t.name}]のステータスを「74」にした！`; } }
                 if (card.id === 13) {
@@ -2138,7 +2157,7 @@
 
                 if (card.id === 21) {
                     if (currentHand.some((c, i) => c && i !== cardIndex)) {
-                        currentField.push(card); currentHand[cardIndex] = null; hasSummonedTeacherThisTurn = true; readyToPlayIndex = null;
+                        currentField.push(card); currentHand[cardIndex] = null; markTeacherSummonedThisTurn(); readyToPlayIndex = null;
                         if(isMyTurn()) {
                             selectionMode = 'present'; document.getElementById('guidance-message').innerHTML = `相手にプレゼントするカードを選んでください。<button onclick="endPresentMode()" style="padding:2px 8px; margin-left:10px; cursor:pointer; background:#6c757d; color:white; border:none; border-radius:3px; font-weight:bold;">やめる</button>`;
                         } else {
@@ -2175,7 +2194,7 @@
                 }
                 if (card.id === 27) {
                     if (currentField.some(c => c.type === 'teacher' && !c.inLab && c.kenonTurns === 0)) {
-                        currentField.push(card); currentHand[cardIndex] = null; hasSummonedTeacherThisTurn = true; readyToPlayIndex = null;
+                        currentField.push(card); currentHand[cardIndex] = null; markTeacherSummonedThisTurn(); readyToPlayIndex = null;
                         if(isMyTurn()) {
                             selectionMode = 'teacher_27'; document.getElementById('guidance-message').innerText = `守護（かばう）状態を付与する味方の先生をクリックしてください。`;
                         } else {
@@ -2236,13 +2255,13 @@
                     philosophySpace.push({ card: card, originalPlayer: currentTurn, remainingTurns: 4 });
                     let pulledCount = 0;
                     for (let i = enemyField.length - 1; i >= 0; i--) { if (enemyField[i].type === 'teacher' && !enemyField[i].inLab && enemyField[i].kenonTurns === 0) { philosophySpace.push({ card: enemyField.splice(i, 1)[0], originalPlayer: currentTurn==='A'?'B':'A', remainingTurns: 4 }); pulledCount++; } }
-                    currentHand[cardIndex] = null; hasSummonedTeacherThisTurn = true; readyToPlayIndex = null; logMsg += `\n相手の先生を ${pulledCount} 人連れ去り、深い哲学対話（2往復）に入った！`; addLog(logMsg); updateScreen(); checkGameOver(); return;
+                    currentHand[cardIndex] = null; markTeacherSummonedThisTurn(); readyToPlayIndex = null; logMsg += `\n相手の先生を ${pulledCount} 人連れ去り、深い哲学対話（2往復）に入った！`; addLog(logMsg); updateScreen(); checkGameOver(); return;
                 }
             } else {
                 card.canAttack = false;
                 currentField.push(card);
                 currentHand[cardIndex] = null;
-                hasSummonedTeacherThisTurn = true;
+                markTeacherSummonedThisTurn();
                 readyToPlayIndex = null;
                 placedOnField = true;
             }
@@ -2253,7 +2272,7 @@
                 logMsg += `\n🚬 喫煙所の順番待ちに登録されました（整理券: ${card.smokeTicket}番）`;
             }
             if (!placedOnField) {
-                card.canAttack = false; currentField.push(card); currentHand[cardIndex] = null; hasSummonedTeacherThisTurn = true; readyToPlayIndex = null;
+                card.canAttack = false; currentField.push(card); currentHand[cardIndex] = null; markTeacherSummonedThisTurn(); readyToPlayIndex = null;
             }
             addLog(logMsg); updateScreen();
             checkGameOver();
