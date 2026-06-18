@@ -534,7 +534,7 @@
             { id: 212, type: "weapon", name: "はっとりのクソデカ分度器", atk: "+0", dfn: "+300", rarity: 3, ability: "武器カード", cutin: "分度器でガード！", effect: "装備した先生の防御力が永続的に +300 される。" },
             { id: 213, type: "weapon", name: "青いバインダー", atk: "+0", dfn: "+100", rarity: 2, ability: "武器カード", cutin: "青いバインダー、構え！", effect: "防御力+100。" },
 
-            { id: 301, type: "building", name: "図書館", atk: "-", dfn: 600, rarity: 3, ability: "建物カード", cutin: "図書館は静かに！", effect: "【常時】敵味方すべてのティーチャーを「沈黙（アビリティ無効）」にする。" },
+            { id: 301, type: "building", name: "図書館", atk: "-", dfn: 600, rarity: 3, ability: "建物カード", cutin: "図書館は静かに！", effect: "【常時】敵味方すべてのティーチャーを「沈黙（アビリティ無効）」にする。※呪文には効果なし" },
             { id: 302, type: "building", name: "保健室", atk: "-", dfn: 600, rarity: 3, ability: "建物カード", cutin: "保健室で休みましょう。", effect: "【常時】敵味方すべてのプレイヤーと先生への状態異常を無効化する。" },
             { id: 303, type: "building", name: "ものづくり工房", atk: "-", dfn: 600, rarity: 3, ability: "建物カード", cutin: "ものづくり工房、稼働！", effect: "【自動】毎ターン開始時、ランダムな先生に武器を自動装備させる。" },
             { id: 305, type: "building", name: "かくじぃの開かずの部屋", atk: "-", dfn: 600, rarity: 4, ability: "建物カード", cutin: "開かずの部屋が開いた...", effect: "【自動】毎ターン終了時ランダムに1人吸い込む。破壊されると全員戻る。" },
@@ -566,7 +566,7 @@
             targetField.push(t);
             let msg = `\n🏀 体育館から [${t.name}] が現れた！`;
             if (t.id === 401) {
-                if (!isAbilityBlocked(ownerTurn, t)) {
+                if (!isTeacherAbilityBlocked(ownerTurn, t)) {
                     sendCardCutin(t);
                     let enemyT = enemyField.filter(c => c.type === 'teacher' && !c.inLab && c.kenonTurns === 0 && c.id !== 11);
                     if (enemyT.length > 0) {
@@ -660,8 +660,13 @@
         }
 
         function isAbilityBlocked(targetPlayer, card) {
-            if (isLibraryActive()) return true; if (card && card.silenceTurns > 0) return true;
-            const enemyField = (targetPlayer === 'A') ? fieldB : fieldA; return enemyField.some(c => c.id === 6 && !c.inLab);
+            if (card && card.silenceTurns > 0) return true;
+            const enemyField = (targetPlayer === 'A') ? fieldB : fieldA;
+            return enemyField.some(c => c.id === 6 && !c.inLab);
+        }
+
+        function isTeacherAbilityBlocked(targetPlayer, card) {
+            return isLibraryActive() || isAbilityBlocked(targetPlayer, card);
         }
 
         function isSidwellBlocking(targetPlayer) {
@@ -1533,7 +1538,7 @@
             if (isMyTurn() && !hasCheckedSenriganThisTurn) {
                 hasCheckedSenriganThisTurn = true;
                 if (fieldA.some(c => c.id === 9 && c.kenonTurns === 0)) {
-                    if (!isAbilityBlocked('A', cardById(9))) {
+                    if (!isTeacherAbilityBlocked('A', cardById(9))) {
                         setTimeout(() => { sendCardCutin(cardById(9)); let handNames = handB.filter(c=>c).map(c => c.name).join(", "); addLog(`👁️ 【浅原の千里眼】AIの手札:\n${handNames || "なし"}`); }, 500);
                     } else {
                         notifySidwellBlock('A', cardById(9));
@@ -1883,7 +1888,7 @@
                 let targetField = enemyField; const akasako = enemyField.find(c => c.id === 15 && !c.inLab && c.kenonTurns === 0);
                 let spellReflected = false;
                 
-                if (akasako && !isAbilityBlocked(currentTurn === 'A'?'B':'A', akasako)) {
+                if (akasako && !isTeacherAbilityBlocked(currentTurn === 'A'?'B':'A', akasako)) {
                     sendCardCutin(cardById(15)); 
                     let isGlobalSpell = [109, 110, 113, 117, 118, 120].includes(card.id);
                     if (isGlobalSpell) { logMsg += `\n相手の[赤迫]の「はいあうとー」発動！全体呪文が跳ね返され、味方に2倍になって降りかかる！`; spellReflected = true; } 
@@ -2019,10 +2024,12 @@
                 : `【${currentTurn==='A'?myName:enemyName}】が [${card.name}] を召喚！`;
             const earlyFieldIds = [4, 21, 27, 34];
             let placedOnField = earlyFieldIds.includes(card.id);
-            if (isAbilityBlocked(currentTurn, card)) {
+            const abilityBlocked = isTeacherAbilityBlocked(currentTurn, card);
+            if (abilityBlocked) {
                 notifySidwellBlock(currentTurn, card);
-                logMsg += "\nアビリティは無効化・沈黙された。"; 
-            } else {
+                logMsg += "\nアビリティは無効化・沈黙された。";
+            }
+            if (!abilityBlocked) {
                 if (!placedOnField) {
                     card.canAttack = false;
                     currentField.push(card);
@@ -2231,6 +2238,13 @@
                     for (let i = enemyField.length - 1; i >= 0; i--) { if (enemyField[i].type === 'teacher' && !enemyField[i].inLab && enemyField[i].kenonTurns === 0) { philosophySpace.push({ card: enemyField.splice(i, 1)[0], originalPlayer: currentTurn==='A'?'B':'A', remainingTurns: 4 }); pulledCount++; } }
                     currentHand[cardIndex] = null; hasSummonedTeacherThisTurn = true; readyToPlayIndex = null; logMsg += `\n相手の先生を ${pulledCount} 人連れ去り、深い哲学対話（2往復）に入った！`; addLog(logMsg); updateScreen(); checkGameOver(); return;
                 }
+            } else {
+                card.canAttack = false;
+                currentField.push(card);
+                currentHand[cardIndex] = null;
+                hasSummonedTeacherThisTurn = true;
+                readyToPlayIndex = null;
+                placedOnField = true;
             }
 
             if (card.id === 18) { card.justReturned = false; card.fieldTurns = 1; }
@@ -2714,7 +2728,7 @@
                     }
 
                     if (card.id === 18) {
-                        if (!isAbilityBlocked(currentTurn, card)) {
+                        if (!isTeacherAbilityBlocked(currentTurn, card)) {
                             if (card.justReturned) { card.justReturned = false; card.fieldTurns = 2; } card.fieldTurns--;
                             if (card.fieldTurns <= 0) { let kato = myField.splice(i, 1)[0]; wanderSpace.push({ card: kato, originalPlayer: currentTurn, remainingTurns: 2 }); endTurnMsg += `\n🚶 [加藤] が徘徊のため戦線離脱した（2ターン除外）。`; }
                         } else notifySidwellBlock(currentTurn, card);
@@ -2724,19 +2738,19 @@
 
             myField.forEach(card => {
                 if (card.id === 8 && enemyField.length > 0) {
-                    if (!isAbilityBlocked(currentTurn, card)) {
+                    if (!isTeacherAbilityBlocked(currentTurn, card)) {
                         if (!isHokenshitsuActive()) { let t = enemyField.filter(c => c.type === 'teacher' && c.videoTurns === 0 && c.hanseibunTurns === 0 && !c.isPetrified && !c.inLab && c.kenonTurns === 0); if (t.length > 0) { let target = t[Math.floor(Math.random() * t.length)]; target.videoTurns = 1; endTurnMsg += `\n[三谷]の効果！相手の[${target.name}]は動画に夢中！`; } }
                     } else notifySidwellBlock(currentTurn, card);
                 }
                 if (card.id === 19) {
-                    if (!isAbilityBlocked(currentTurn, card)) {
+                    if (!isTeacherAbilityBlocked(currentTurn, card)) {
                         let added = false;
                         enemyField.forEach(ec => { if (ec.type === 'teacher' && ec.deathSentenceTurns === -1 && !ec.inLab && ec.kenonTurns === 0 && ec.id !== 11) { ec.deathSentenceTurns = 3; added = true; } });
                         if (added) endTurnMsg += `\n🍜 [田辺先生]の効果！相手の先生に「死の宣告」を付与！`;
                     } else notifySidwellBlock(currentTurn, card);
                 }
                 if (card.id === 24) {
-                    if (!isAbilityBlocked(currentTurn, card)) {
+                    if (!isTeacherAbilityBlocked(currentTurn, card)) {
                         let enemyHandRef = currentTurn==='A'?handB:handA; let emptyIdx = enemyHandRef.findIndex(c => !c);
                         if (emptyIdx !== -1) {
                             enemyHandRef[emptyIdx] = { id: 502, type: "spell", name: "通知", atk: "-", dfn: "-", rarity: 1, ability: "呪文カード", cutin: "通知です。", effect: "効果なし。使うと消える。" };
@@ -2783,7 +2797,7 @@
 
             nextActiveField.forEach(card => {
                 if (card.id === 11 && card.kenonTurns === 0) {
-                    if (!isAbilityBlocked(currentTurn, card)) {
+                    if (!isTeacherAbilityBlocked(currentTurn, card)) {
                         if (currentTurn === 'A') { hpA = Math.min(maxHp, hpA+100); poisonA = 0; burnA = 0; } else { hpB = Math.min(maxHp, hpB+100); poisonB = 0; burnB = 0; }
                         nextActiveField.forEach(ally => { ally.hanseibunTurns = 0; ally.videoTurns = 0; ally.silenceTurns = 0; ally.sleepTurns = 0; ally.pechankoTurns = 0; ally.isPetrified = false; ally.deathSentenceTurns = -1; ally.freezeTurns = 0; ally.bindTurns = 0; });
                         endTurnMsg += `\n✨[木村]の効果発動！状態異常がすべて浄化されHPが100回復した！`;
