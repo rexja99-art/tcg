@@ -62,13 +62,11 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">安定版 Ver 3.2</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">安定版 Ver 3.3</span></h1>
         <div class="patch-notes">
-            <strong>📋 変更履歴（Ver 3.2）</strong><br>
-            ・🃏 <b>新呪文5枚</b>：単位認定試験／追試／BlackBoardLeatn／学内LAN／ジェネリックソスキル<br>
-            ・🏛️ <b>新建物</b>：ものづくり工房裏のゴミステーション（毎T手札1枚捨て）<br>
-            ・🛡️ <b>視聴覚室・合同講義室・マルチメディア室</b>：HP+1000＆守護（優先被弾）<br>
-            ・📦 万能枠の建物出現率を30%に変更
+            <strong>📋 変更履歴（Ver 3.3）</strong><br>
+            ・❤️ <b>致命傷耐性</b>：しげよし等の回数は即死系（Cygein・学生課・死の宣告・道連れ・長峰）にも有効<br>
+            ・🃏 <b>Ver 3.2</b>：新呪文5枚・ゴミステーション・守護建物強化・万能枠30%
         </div>
 
         <div class="win-counter">🏆 現在の戦績: あなた <span id="win-player" style="color:#007bff">0</span> - <span id="win-ai" style="color:#dc3545">0</span> AI</div>
@@ -470,7 +468,7 @@
             { id: 4, type: "teacher", name: "おがぢ", atk: 300, dfn: 300, rarity: 4, ability: "哲学対話", cutin: "哲学対話しましょう。", effect: "【召喚時】１ターン相手のティーチャー全員と哲学対話状態にする。" },
             { id: 5, type: "teacher", name: "ジョージ", atk: 700, dfn: 700, rarity: 5, ability: "諸君ら", cutin: "そこの連中", effect: "【常時】自身に攻撃したティーチャーには反省文を書かせる。" },
             { id: 6, type: "teacher", name: "シドウェル", atk: 100, dfn: 300, rarity: 5, ability: "タメデス", cutin: "タメデース", effect: "【常時】相手のアビリティを無効化（※呪文には効果なし）。" },
-            { id: 7, type: "teacher", name: "しげよし", atk: 300, dfn: 300, rarity: 3, ability: "再再再試", cutin: "再再再試", effect: "【常時】戦闘や能力による破壊を3回まで無効化して耐える。" },
+            { id: 7, type: "teacher", name: "しげよし", atk: 300, dfn: 300, rarity: 3, ability: "再再再試", cutin: "再再再試", effect: "【常時】戦闘・能力・即死を含む致命傷を3回まで耐える。" },
             { id: 8, type: "teacher", name: "三谷", atk: 200, dfn: 200, rarity: 3, ability: "動画みといてね～", cutin: "動画みといてね〜。", effect: "【自動】毎ターン終了時、相手のランダムな先生1体を動画視聴状態にする。" },
             { id: 9, type: "teacher", name: "浅原", atk: 10, dfn: 10, rarity: 1, ability: "尊師", cutin: "私には全て視えている。", effect: "【常時】宙に浮き通常攻撃無効。ターン開始時、千里眼で相手の手札を覗き見る。" },
             { id: 10, type: "teacher", name: "白土", atk: 400, dfn: 800, rarity: 2, ability: "次スマホ触ってたらとりあげますよ？", cutin: "次スマホ触ってたらとりあげますよ？", effect: "実際に取り上げられることはない。" },
@@ -519,7 +517,7 @@
             { id: 118, type: "spell", name: "さくら連絡網", atk: "-", dfn: "-", rarity: 2, ability: "呪文カード", cutin: "検温の入力をお願いします。", effect: "相手は召喚した先生が「検温中（非表示・対象外）」になってから場に出る。" },
             { id: 119, type: "spell", name: "Cygein", atk: "-", dfn: "-", rarity: 5, ability: "呪文カード", cutin: "致命的なエラーが発生しました。", effect: "相手のティーチャー1体を選択し、致命傷（即死）を与える。" },
             { id: 123, type: "spell", name: "ホワイトボードマーカー", atk: "-", dfn: "-", rarity: 3, ability: "呪文カード", cutin: "落書き大作戦！", effect: "相手プレイヤーの画面を落書き。5ターン間、相手からは体力・状態異常・名前が見えなくなる。" },
-            { id: 124, type: "spell", name: "単位認定試験", atk: "-", dfn: "-", rarity: 3, ability: "呪文カード", cutin: "単位認定、始めます。", effect: "【即時】自分のフィールド上のティーチャー全員に、致命傷を1回耐える効果を付与する。" },
+            { id: 124, type: "spell", name: "単位認定試験", atk: "-", dfn: "-", rarity: 3, ability: "呪文カード", cutin: "単位認定、始めます。", effect: "【即時】自分のフィールド上のティーチャー全員に、致命傷（即死含む）を1回耐える効果を付与する。" },
             { id: 125, type: "spell", name: "追試", atk: "-", dfn: "-", rarity: 2, ability: "呪文カード", cutin: "追試のチャンスだ！", effect: "【即時】このターン、もう1枚ティーチャーを召喚できる。" },
             { id: 126, type: "spell", name: "BlackBoardLeatn", atk: "-", dfn: "-", rarity: 3, ability: "呪文カード", cutin: "BlackBoardLeatn、起動！", effect: "【即時】相手の手札に「小テスト」2枚と「中間テスト」1枚を追加する。" },
             { id: 127, type: "spell", name: "学内LAN", atk: "-", dfn: "-", rarity: 3, ability: "呪文カード", cutin: "学内LAN、接続中…", effect: "【即時】2ターンの間、相手は手札のどれが何のカードかわからなくなる。" },
@@ -1323,6 +1321,57 @@
             g.push(card);
         }
 
+        function consumeReviveOnLethal(teacher) {
+            if (teacher && teacher.revivesLeft > 0) {
+                teacher.revivesLeft--;
+                teacher.dfn = 300;
+                return true;
+            }
+            return false;
+        }
+
+        function applyLethalToFieldTeacher(field, index, playerStr) {
+            const teacher = field[index];
+            if (!teacher || teacher.type !== 'teacher') return { survived: false, destroyed: false, name: '' };
+            if (consumeReviveOnLethal(teacher)) {
+                return { survived: true, destroyed: false, name: teacher.name };
+            }
+            spawnDeathEffect(`field-card-${playerStr}-${index}`);
+            const removed = field.splice(index, 1)[0];
+            sendToGraveyard(removed, playerStr);
+            return { survived: false, destroyed: true, name: removed.name };
+        }
+
+        function applyLethalSweep(field, playerStr, logFn) {
+            let msg = '';
+            for (let i = field.length - 1; i >= 0; i--) {
+                const c = field[i];
+                if (c.type !== 'teacher' || c.inLab || c.kenonTurns !== 0) continue;
+                const result = applyLethalToFieldTeacher(field, i, playerStr);
+                if (result.survived) msg += logFn(result.name, true);
+                else if (result.destroyed) msg += logFn(result.name, false);
+            }
+            return msg;
+        }
+
+        function applyRevengeLethalToAttackers(attackers, myField) {
+            let msg = '';
+            sendCardCutin(cardById(107));
+            attackers.forEach((atkCard, i) => {
+                let currentIdx = myField.indexOf(atkCard);
+                if (currentIdx === -1) return;
+                spawnEffectAtElement(`field-card-${currentTurn}-${currentIdx}`, 'explode', i * 150);
+                if (consumeReviveOnLethal(atkCard)) {
+                    msg += `\n[${atkCard.name}] は道連れの致命傷を耐性で耐えた！`;
+                } else {
+                    spawnDeathEffect(`field-card-${currentTurn}-${currentIdx}`);
+                    let d = myField.splice(currentIdx, 1)[0]; sendToGraveyard(d, currentTurn);
+                    msg += `\n[${d.name}] が道連れになった！`;
+                }
+            });
+            return msg;
+        }
+
         function drawHand(player) {
             let hand = (player === 'A' ? handA : handB); 
             let p = (player === 'A' ? poolsA : poolsB); 
@@ -1636,7 +1685,7 @@
             else if (card.smokeTicket > 0) push(`🎫待ち${card.smokeTicket}`, '#555');
             if (card.freezeTurns > 0) push(`🥶凍結${card.freezeTurns}T`, '#0dcaf0');
             if (card.bindTurns > 0) push(`⛓️バインド${card.bindTurns}T`, '#6c757d');
-            if (card.id === 7 && card.revivesLeft > 0) push(`❤️耐性${card.revivesLeft}`, '#28a745');
+            if (card.revivesLeft > 0) push(`❤️耐性${card.revivesLeft}`, '#28a745');
             if (card.isGuardian) push('🛡️守護', '#198754');
             if (card.hasSupaneti) push('💥スパネチ', '#dc3545');
             if (card.hasRevenge) push('🔥道連れ', '#8b0000');
@@ -2005,10 +2054,10 @@
                 }
                 if (card.id === 110) {
                     if (spellReflected) {
-                        for(let i=currentField.length-1; i>=0; i--) { if(currentField[i].type==='teacher' && !currentField[i].inLab && currentField[i].kenonTurns === 0) { spawnDeathEffect(`field-card-${currentTurn}-${i}`); currentField[i].revivesLeft = 0; sendToGraveyard(currentField.splice(i,1)[0], currentTurn); } }
+                        logMsg += applyLethalSweep(currentField, currentTurn, (name, survived) => survived ? `\n[${name}] は致命傷を耐性で耐えた！` : `\n[${name}] が倒された！`);
                     } else {
-                        for(let i=enemyField.length-1; i>=0; i--) { if(enemyField[i].type==='teacher' && !enemyField[i].inLab && enemyField[i].kenonTurns === 0) { spawnDeathEffect(`field-card-${currentTurn==='A'?'B':'A'}-${i}`); sendToGraveyard(enemyField.splice(i,1)[0], currentTurn==='A'?'B':'A'); } }
-                        for(let i=currentField.length-1; i>=0; i--) { if(currentField[i].type==='teacher' && !currentField[i].inLab && currentField[i].kenonTurns === 0) { spawnDeathEffect(`field-card-${currentTurn}-${i}`); sendToGraveyard(currentField.splice(i,1)[0], currentTurn); } }
+                        logMsg += applyLethalSweep(enemyField, currentTurn === 'A' ? 'B' : 'A', (name, survived) => survived ? `\n[${name}] は致命傷を耐性で耐えた！` : `\n[${name}] が倒された！`);
+                        logMsg += applyLethalSweep(currentField, currentTurn, (name, survived) => survived ? `\n[${name}] は致命傷を耐性で耐えた！` : `\n[${name}] が倒された！`);
                     }
                 }
                 if (card.id === 113) {
@@ -2183,7 +2232,7 @@
                         if (enemyField[i].type === 'teacher' && !enemyField[i].inLab && enemyField[i].kenonTurns === 0) {
                             spawnEffectAtElement(`field-card-${currentTurn==='A'?'B':'A'}-${i}`, 'explode', destroyedCount*100);
                             if (enemyField[i].revivesLeft > 0) { 
-                                enemyField[i].revivesLeft--; logMsg += `\n[${enemyField[i].name}] は耐え抜いた！`;
+                                enemyField[i].revivesLeft--; enemyField[i].dfn = 300; logMsg += `\n[${enemyField[i].name}] は致命傷を耐性で耐えた！`;
                             } else { 
                                 spawnDeathEffect(`field-card-${currentTurn==='A'?'B':'A'}-${i}`); let d = enemyField.splice(i, 1)[0]; sendToGraveyard(d, currentTurn==='A'?'B':'A'); logMsg += `\n[${d.name}] を破壊した！`;
                             }
@@ -2470,8 +2519,8 @@
                 let logMsg = `【${currentTurn==='A'?myName:enemyName}】が呪文 [${sc.name}] を発動！\n[${targetTeacher.name}] に致命的なエラーが発生した！`;
                 sendCardCutin(sc);
                 spawnEffectAtElement(`field-card-${currentTurn==='A'?'B':'A'}-${targetIndex}`, 'explode', 0);
-                spawnDeathEffect(`field-card-${currentTurn==='A'?'B':'A'}-${targetIndex}`);
-                targetField.splice(targetIndex, 1);
+                const lethal = applyLethalToFieldTeacher(targetField, targetIndex, currentTurn === 'A' ? 'B' : 'A');
+                if (lethal.survived) logMsg += `\nしかし [${targetTeacher.name}] は致命傷を1回耐えた！`;
                 currentHand[selectedCardIndex] = null; hasCastSpellThisTurn = true;
                 selectionMode = null; selectedCardIndex = null; document.getElementById('guidance-message').innerText = ""; readyToPlayIndex = null;
                 addLog(logMsg); updateScreen(); checkGameOver();
@@ -2634,17 +2683,7 @@
                                     else { 
                                         spawnDeathEffect(`field-card-${targetPlayerStr}-${i}`);
                                         let d = targetField.splice(i, 1)[0]; sendToGraveyard(d, targetPlayerStr); logMsg += `\n[${d.name}] を倒した！`;
-                                        if (d.hasRevenge) {
-                                            sendCardCutin(cardById(107));
-                                            attackers.forEach((atkCard) => {
-                                                let currentIdx = myField.indexOf(atkCard);
-                                                if (currentIdx !== -1) { 
-                                                    spawnEffectAtElement(`field-card-${currentTurn}-${currentIdx}`, 'explode', 0); 
-                                                    spawnDeathEffect(`field-card-${currentTurn}-${currentIdx}`);
-                                                    let dead = myField.splice(currentIdx, 1)[0]; sendToGraveyard(dead, currentTurn); logMsg += `\n[${dead.name}] が道連れになった！`; 
-                                                }
-                                            });
-                                        }
+                                        if (d.hasRevenge) logMsg += applyRevengeLethalToAttackers(attackers, myField);
                                     }
                                 } else if (hit.blocked) {
                                     logMsg += `\n[${t.name}] は防御力${hit.def}で攻撃を防いだ！`;
@@ -2718,15 +2757,7 @@
             }
             
             if (isDefenderDestroyed && isRevengeActive) {
-                sendCardCutin(cardById(107));
-                attackers.forEach((atkCard, i) => { 
-                    let currentIdx = myField.indexOf(atkCard); 
-                    if (currentIdx !== -1) { 
-                        spawnEffectAtElement(`field-card-${currentTurn}-${currentIdx}`, 'explode', i*150); 
-                        spawnDeathEffect(`field-card-${currentTurn}-${currentIdx}`);
-                        let d = myField.splice(currentIdx, 1)[0]; sendToGraveyard(d, currentTurn); logMsg += `\n[${d.name}] が道連れになった！`; 
-                    } 
-                });
+                logMsg += applyRevengeLethalToAttackers(attackers, myField);
             }
             
             consumeAttackerTurns(attackers); addLog(logMsg); updateScreen(); checkGameOver();
@@ -2784,15 +2815,7 @@
                 logMsg += "\nしかし、かばわれた！";
 
                 if (isKakujiDestroyed && isRevengeActive) {
-                    sendCardCutin(cardById(107));
-                    attackers.forEach((atkCard, i) => { 
-                        let currentIdx = myField.indexOf(atkCard); 
-                        if (currentIdx !== -1) { 
-                            spawnEffectAtElement(`field-card-${currentTurn}-${currentIdx}`, 'explode', i*150); 
-                            spawnDeathEffect(`field-card-${currentTurn}-${currentIdx}`);
-                            let d = myField.splice(currentIdx, 1)[0]; sendToGraveyard(d, currentTurn); logMsg += `\n[${d.name}] が道連れになった！`; 
-                        } 
-                    });
+                    logMsg += applyRevengeLethalToAttackers(attackers, myField);
                 }
             } else {
                 let hpBoxIdStr = targetPlayerStr === 'A' ? 'hp-box-self' : 'hp-box-enemy'; 
@@ -2862,12 +2885,17 @@
                 let card = myField[i];
                 if (card.baitenAtkTurns > 0) { card.atk -= 500; card.baitenAtkTurns = 0; }
                 if (card.deathSentenceTurns > 0) card.deathSentenceTurns--;
-                if (card.deathSentenceTurns === 0) { 
-                    spawnEffectAtElement(`field-card-${currentTurn}-${i}`, 'explode', 0); 
-                    spawnDeathEffect(`field-card-${currentTurn}-${i}`);
-                    sendToGraveyard(myField.splice(i, 1)[0], currentTurn); 
-                    endTurnMsg += `\n💀 宣告により [${card.name}] が突然死した！`; 
-                } 
+                if (card.deathSentenceTurns === 0) {
+                    card.deathSentenceTurns = -1;
+                    if (consumeReviveOnLethal(card)) {
+                        endTurnMsg += `\n💀 宣告の致命傷を [${card.name}] が耐性で耐えた！`;
+                    } else {
+                        spawnEffectAtElement(`field-card-${currentTurn}-${i}`, 'explode', 0);
+                        spawnDeathEffect(`field-card-${currentTurn}-${i}`);
+                        sendToGraveyard(myField.splice(i, 1)[0], currentTurn);
+                        endTurnMsg += `\n💀 宣告により [${card.name}] が突然死した！`;
+                    }
+                }
                 else {
                     if (card.hanseibunTurns > 0) card.hanseibunTurns--; if (card.videoTurns > 0) card.videoTurns--; 
                     if (card.silenceTurns > 0) card.silenceTurns--; if (card.sleepTurns > 0) card.sleepTurns--; if (card.pechankoTurns > 0) card.pechankoTurns--;
