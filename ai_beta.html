@@ -62,13 +62,16 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">🧪 ベータ版 Ver 31.15</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">🧪 ベータ版 Ver 31.17</span></h1>
         <div class="patch-notes">
-            <strong>🤖 AIモードの特徴</strong><br>
-            ・🃏 <b>手札グレーアウト</b>：そのターン出せないカードを視覚的に表示。<br>
-            ・🏀 <b>ボール修正</b>：2ターンの間ボール保持者のみ攻撃可、満了で消滅。<br>
-            ・🎴 <b>トランプ下方</b>：全体攻撃のダメージが分散。<br>
-            ・🔥 <b>炎上田辺変更</b>：味方防御半減＋2回攻撃。
+            <strong>📋 変更履歴（Ver 31.17）</strong><br>
+            ・🛡️ <b>英語の浅原２</b>：さくら検温後、守護対象がいなくても場に残るよう修正<br>
+            ・🌡️ <b>さくら連絡網</b>：検温1T後に正式召喚。完了時は召喚枠を消費しない<br>
+            ・🔗 <b>ホーム</b>：安定版・ベータ版・オンライン版のボタン遷移を整理<br>
+            ・🤖 <b>AI</b>：同一装備の重ね掛けループを防止<br>
+            ・📚 <b>図書館</b>：呪文には効果なし／沈黙・無効化時もティーチャーは場に出せる<br>
+            ・🃏 <b>新カード</b>：青いバインダー、ホワイトボードマーカー／白土・英語の浅原に改名<br>
+            ・🏛️ 万能枠の建物出現率25%／服部の私物狩り修正／検温義務の残りT表示
         </div>
 
         <div class="win-counter">🏆 現在の戦績: あなた <span id="win-player" style="color:#007bff">0</span> - <span id="win-ai" style="color:#dc3545">0</span> AI</div>
@@ -99,11 +102,11 @@
             <input type="checkbox" id="sound-enabled-check" onchange="syncSoundSetting()"> 🔊 効果音を有効にする
         </label>
         <br>
-        <button class="setup-btn" style="background: #e65100;" onclick="startAiMode()">🤖 ベータ版で対戦スタート！</button>
+        <button class="setup-btn" style="background: #e65100;" onclick="startAiMode()">🧪 ベータ版で対戦スタート！</button>
         <hr style="border: 0; border-top: 1px solid #ccc; margin: 15px 0;">
-        <button class="setup-btn" style="background: #28a745;" onclick="location.href='ai.html'">安定版（AI対戦）へ戻る ➡️</button>
+        <button class="setup-btn" style="background: #28a745;" onclick="location.href='ai.html'">✅ 安定版（AI対戦）へ ➡️</button>
         <br>
-        <button class="setup-btn" style="background: #6c757d; margin-top: 5px;" onclick="location.href='index.html'">🌐 オンライン対戦版へ戻る ➡️</button>
+        <button class="setup-btn" style="background: #6c757d; margin-top: 5px;" onclick="location.href='index.html'">🌐 オンライン対戦版へ ➡️</button>
     </div>
 
     <div id="game-screen" style="display: none;">
@@ -1756,18 +1759,27 @@
         function completeKenonPendingSummon(card, player) {
             const field = player === 'A' ? fieldA : fieldB;
             const hand = player === 'A' ? handA : handB;
-            const idx = field.indexOf(card);
-            if (idx !== -1) field.splice(idx, 1);
+            if (!field.includes(card)) {
+                card.canAttack = false;
+                field.push(card);
+            }
             card.pendingSummonAfterKenon = false;
             card.kenonHidden = false;
             card.kenonTurns = 0;
-            let slot = hand.findIndex(c => !c);
-            if (slot === -1) slot = 0;
-            hand[slot] = card;
+
             kenonResolving = true;
             const savedTurn = currentTurn;
             currentTurn = player;
+
+            let slot = hand.findIndex(c => !c);
+            if (slot === -1) slot = 0;
+            const savedHandSlot = hand[slot];
+            hand[slot] = card;
+
             summonCard(slot);
+
+            if (hand[slot] === card) hand[slot] = savedHandSlot;
+
             kenonResolving = false;
             currentTurn = savedTurn;
             updateScreen();
@@ -2043,6 +2055,7 @@
                 : `【${currentTurn==='A'?myName:enemyName}】が [${card.name}] を召喚！`;
             const earlyFieldIds = [4, 21, 27, 34];
             let placedOnField = earlyFieldIds.includes(card.id);
+            if (kenonResolving && currentField.includes(card)) placedOnField = true;
             const abilityBlocked = isTeacherAbilityBlocked(currentTurn, card);
             if (abilityBlocked) {
                 notifySidwellBlock(currentTurn, card);
@@ -2193,17 +2206,28 @@
                     }
                 }
                 if (card.id === 27) {
-                    if (currentField.some(c => c.type === 'teacher' && !c.inLab && c.kenonTurns === 0)) {
-                        currentField.push(card); currentHand[cardIndex] = null; markTeacherSummonedThisTurn(); readyToPlayIndex = null;
+                    if (!currentField.includes(card)) {
+                        card.canAttack = false;
+                        currentField.push(card);
+                    }
+                    currentHand[cardIndex] = null;
+                    markTeacherSummonedThisTurn();
+                    readyToPlayIndex = null;
+                    placedOnField = true;
+
+                    const guardianTargets = currentField.filter(c => c !== card && c.type === 'teacher' && !c.inLab && c.kenonTurns === 0);
+                    if (guardianTargets.length > 0) {
                         if(isMyTurn()) {
                             selectionMode = 'teacher_27'; document.getElementById('guidance-message').innerText = `守護（かばう）状態を付与する味方の先生をクリックしてください。`;
                         } else {
-                            let tIdx = fieldB.findIndex(c => c.type==='teacher' && !c.inLab && c.kenonTurns===0 && !c.isGuardian);
-                            if(tIdx === -1) tIdx = fieldB.findIndex(c => c.type==='teacher' && !c.inLab && c.kenonTurns===0);
+                            let tIdx = fieldB.findIndex(c => c !== card && c.type==='teacher' && !c.inLab && c.kenonTurns===0 && !c.isGuardian);
+                            if(tIdx === -1) tIdx = fieldB.findIndex(c => c !== card && c.type==='teacher' && !c.inLab && c.kenonTurns===0);
                             if(tIdx !== -1) { applySelection(tIdx, 'self'); return; }
                         }
-                        addLog(logMsg); updateScreen(); return;
-                    } else { logMsg += `\nしかし守護を付与する味方がいなかった！`; }
+                        addLog(logMsg); updateScreen(); checkGameOver(); return;
+                    }
+                    logMsg += `\nしかし守護を付与する味方がいなかった！`;
+                    addLog(logMsg); updateScreen(); checkGameOver(); return;
                 }
                 if (card.id === 28) {
                     [...fieldA, ...fieldB].forEach(t => { if(t.type === 'teacher' && !t.inLab && t.kenonTurns === 0) { let tmp = t.atk; t.atk = t.dfn; t.dfn = tmp; } });
@@ -2258,8 +2282,10 @@
                     currentHand[cardIndex] = null; markTeacherSummonedThisTurn(); readyToPlayIndex = null; logMsg += `\n相手の先生を ${pulledCount} 人連れ去り、深い哲学対話（2往復）に入った！`; addLog(logMsg); updateScreen(); checkGameOver(); return;
                 }
             } else {
-                card.canAttack = false;
-                currentField.push(card);
+                if (!currentField.includes(card)) {
+                    card.canAttack = false;
+                    currentField.push(card);
+                }
                 currentHand[cardIndex] = null;
                 markTeacherSummonedThisTurn();
                 readyToPlayIndex = null;
@@ -2271,7 +2297,7 @@
                 card.smokeTicket = smokingNextTicket++;
                 logMsg += `\n🚬 喫煙所の順番待ちに登録されました（整理券: ${card.smokeTicket}番）`;
             }
-            if (!placedOnField) {
+            if (!placedOnField && !currentField.includes(card)) {
                 card.canAttack = false; currentField.push(card); currentHand[cardIndex] = null; markTeacherSummonedThisTurn(); readyToPlayIndex = null;
             }
             addLog(logMsg); updateScreen();
