@@ -91,11 +91,13 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">安定版 Ver 3.8</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">安定版 Ver 3.9</span></h1>
         <div class="patch-notes">
-            <strong>📋 変更履歴（Ver 3.8）</strong><br>
-            ・✨ ランダム召喚→フィールド出現・手札シャッフル＝全捨て＋再ドローに修正<br>
-            ・🎚️ <b>Ver 3.7</b>：スキル調整
+            <strong>📋 変更履歴（Ver 3.9）</strong><br>
+            ・🔄 スキル選択が3ターンごとに無限に続くよう修正<br>
+            ・🧊 英語の浅原２：味方の通常攻撃が氷属性（凍結付与）に<br>
+            ・⚔️ AI難易度強化（かくじぃDEF2倍・薄井ATK3倍・ジョージHP2倍・長峰HP10倍/即死/直撃優先）<br>
+            ・🎚️ <b>Ver 3.8</b>：ランダム召喚・手札シャッフル修正
         </div>
 
         <div class="win-counter">🏆 現在の戦績: あなた <span id="win-player" style="color:#007bff">0</span> - <span id="win-ai" style="color:#dc3545">0</span> AI</div>
@@ -226,6 +228,7 @@
         let skillEnabled = localStorage.getItem('tcgSkillOn') !== 'false';
         let skillPickIndex = 0;
         let playerTurnCount = 0;
+        let turnsSinceLastSkillDraft = 0;
         let skillPickResumeCallback = null;
         let confusionTurnsB = 0;
         let playerSkillState = createEmptyPlayerSkillState();
@@ -275,9 +278,6 @@
         }
 
         function rollSkillStar() {
-            if (typeof IS_BETA_BUILD !== 'undefined' && IS_BETA_BUILD) {
-                return 1 + Math.floor(Math.random() * 5);
-            }
             const rates = getSkillStarRates(skillPickIndex);
             let r = Math.random() * 100, acc = 0;
             for (let i = 0; i < 5; i++) { acc += rates[i]; if (r < acc) return i + 1; }
@@ -292,8 +292,7 @@
 
         function shouldOfferSkillPickOnTurnStart() {
             if (!isSkillSystemEnabled() || hpA <= 0 || hpB <= 0 || currentTurn !== 'A') return false;
-            if (typeof IS_BETA_BUILD !== 'undefined' && IS_BETA_BUILD) return playerTurnCount >= 1;
-            return playerTurnCount >= 3 && playerTurnCount % 3 === 0;
+            return turnsSinceLastSkillDraft >= 3;
         }
 
         function buildSkillPool() {
@@ -481,6 +480,7 @@
             const msg = skill.apply();
             playerSkillState.pickedSkills.push({ star: skill.star, permanent: skill.permanent, name: skill.name });
             skillPickIndex++;
+            turnsSinceLastSkillDraft = 0;
             addLog(`✨ スキル獲得：[★${skill.star}] ${skill.name} — ${msg}`);
             document.getElementById('skill-pick-overlay').classList.remove('active');
             updatePlayerSkillsBar();
@@ -806,7 +806,7 @@
                 isPiercing: false, isLaughing: false, attacksLeft: 0, freezeTurns: 0, isGuardian: false,
                 hasSupaneti: false, numbering: 0, bindTurns: 0, isLineTracer: false, isCriticalNext: false,
                 isSpreadAttack: false, kenonHidden: false, baitenAtkTurns: 0,
-                pendingSummonAfterKenon: false, summonOwner: null, usuiDoubled: false, invincibleTurns: 0
+                pendingSummonAfterKenon: false, summonOwner: null, usuiDoubled: false, kakujiDfnDoubled: false, georgeHpDoubled: false, invincibleTurns: 0
             };
         }
 
@@ -928,7 +928,7 @@
             { id: 24, type: "teacher", name: "留学交流室長の畑村", atk: 500, dfn: 200, rarity: 5, ability: "畑村のどとうの通知", cutin: "通知を確認してください。", effect: "【自動】毎ターン終了時、相手の手札に「通知（無意味な呪文）」を送る。" },
             { id: 25, type: "teacher", name: "炎上する田辺先生", atk: 400, dfn: 400, rarity: 5, ability: "どうせ暇でしょ？", cutin: "どうせ暇でしょ？", effect: "【常時】味方フィールドのティーチャーは防御力が半分になる代わりに、1ターンに2回攻撃できる。" },
             { id: 26, type: "teacher", name: "英語の浅原", atk: 10, dfn: 10, rarity: 3, ability: "動詞がどうした", cutin: "動詞がどうした！", effect: "【召喚時】相手のティーチャー全員を3ターン凍らせる（行動不能・被ダメ半減）。" },
-            { id: 27, type: "teacher", name: "英語の浅原２", atk: 10, dfn: 10, rarity: 3, ability: "主語はしゅごい", cutin: "主語はしゅごい！", effect: "【召喚時】味方ティーチャー1体に「守護（かばう）」状態を付与する。" },
+            { id: 27, type: "teacher", name: "英語の浅原２", atk: 10, dfn: 10, rarity: 3, ability: "主語はしゅごい", cutin: "主語はしゅごい！", effect: "【常時】味方の通常攻撃は氷属性（凍結付与）。【召喚時】味方ティーチャー1体に「守護（かばう）」を付与。" },
             { id: 28, type: "teacher", name: "契約内容をコロコロ変える福地", atk: 100, dfn: 100, rarity: 4, ability: "シラバスは契約書です", cutin: "シラバスは契約書です。", effect: "【召喚時】敵味方全員の攻撃力と防御力を反転させる。" },
             { id: 29, type: "teacher", name: "国語の畑村", atk: 500, dfn: 200, rarity: 4, ability: "スパネチ", cutin: "スパネチ！", effect: "【召喚時】自身に「スパネチ（次攻撃確定クリティカル＆相手2Tバインド）」を付与。" },
             { id: 30, type: "teacher", name: "国語の畑村2", atk: 500, dfn: 200, rarity: 3, ability: "ナンバリング", cutin: "ナンバリングします。", effect: "【召喚時】相手ティーチャー全員に番号を割り当てる（意味はない）。" },
@@ -1103,12 +1103,39 @@
 
         function applyAiTeacherDifficultyBonus(card) {
             if (!isAiMode || !fieldB.includes(card) || card.type !== 'teacher') return;
-            if (aiDifficulty === 'kakuji') card.isGuardian = true;
-            if (aiDifficulty === 'usui' && !card.usuiDoubled) { card.atk *= 2; card.usuiDoubled = true; }
+            if (aiDifficulty === 'kakuji') {
+                card.isGuardian = true;
+                if (!card.kakujiDfnDoubled) { card.dfn *= 2; card.kakujiDfnDoubled = true; }
+            }
+            if (aiDifficulty === 'usui' && !card.usuiDoubled) { card.atk *= 3; card.usuiDoubled = true; }
+            if (aiDifficulty === 'george' && card.id === 5 && !card.georgeHpDoubled) { card.dfn *= 2; card.georgeHpDoubled = true; }
         }
 
         function getPlayerMaxHp(player) {
-            return (player === 'B' && isNagamineMode()) ? maxHp * 2 : maxHp;
+            return (player === 'B' && isNagamineMode()) ? maxHp * 10 : maxHp;
+        }
+
+        function applyNagamineInstantKill() {
+            if (!isNagamineMode() || hpA <= 0) return '';
+            const candidates = [];
+            fieldA.forEach((c, i) => { if (c.type === 'teacher' && !c.inLab && c.kenonTurns === 0) candidates.push(i); });
+            if (!candidates.length) return '';
+            const idx = candidates[Math.floor(Math.random() * candidates.length)];
+            spawnDeathEffect(`field-card-A-${idx}`);
+            const victim = fieldA.splice(idx, 1)[0];
+            sendToGraveyard(victim, 'A');
+            return `\n💀 長峰級の即死！[${victim.name}]は消滅した！`;
+        }
+
+        function isIceAttributeAttackActive(attackerField) {
+            return attackerField.some(c => c.id === 27 && !c.inLab && c.kenonTurns === 0);
+        }
+
+        function applyIceAttackOnHit(defender, attackerField, logMsgRef, targetMode) {
+            if (targetMode !== 'enemy' || !defender || defender.type !== 'teacher' || defender.id === 9) return logMsgRef;
+            if (!isIceAttributeAttackActive(attackerField)) return logMsgRef;
+            defender.freezeTurns = Math.max(defender.freezeTurns, 1);
+            return logMsgRef + `\n🧊 氷属性攻撃！[${defender.name}]を凍結！`;
         }
 
         function getHandConfig(player) {
@@ -1285,7 +1312,7 @@
 
         function initGame() {
             hpA = maxHp; hpB = getPlayerMaxHp('B'); prevHpA = maxHp; prevHpB = hpB; currentTurn = Math.random() < 0.5 ? 'A' : 'B';
-            playerSkillState = createEmptyPlayerSkillState(); skillPickIndex = 0; playerTurnCount = 0; confusionTurnsB = 0;
+            playerSkillState = createEmptyPlayerSkillState(); skillPickIndex = 0; playerTurnCount = 0; turnsSinceLastSkillDraft = 0; confusionTurnsB = 0;
             handA = Array(getHandConfig('A').size).fill(null); handB = Array(getHandConfig('B').size).fill(null); fieldA = []; fieldB = []; buildingStack = [];
             resetTurnActionCounters();
             attackingCardIndexes = []; philosophySpace = []; wanderSpace = []; akazuSpace = []; 
@@ -1781,8 +1808,8 @@
                         else if (isNagamineMode()) {
                             const canPierce = attackers.some(a => fieldB[a].isLineTracer || fieldB[a].isPiercing);
                             if (isGuardianBuildingActive()) { fightCards(attackers, 0, 'building'); if (aiFinishAction('attack:nagamine:guardian-building')) break; continue; }
-                            if (totalAttackPower >= hpA && enemyBallIdx === -1 && kakujiIdx === -1) {
-                                attackPlayerDirectly(attackers, 'enemy'); if (aiFinishAction('attack:nagamine:lethal')) break; continue;
+                            if (enemyBallIdx === -1 && kakujiIdx === -1 && hpA > 0) {
+                                attackPlayerDirectly(attackers, 'enemy'); if (aiFinishAction('attack:nagamine:direct-priority')) break; continue;
                             }
                             if (enemyBallIdx !== -1) { fightCards(attackers, enemyBallIdx, 'enemy'); if (aiFinishAction('attack:nagamine:ball')) break; continue; }
                             if (kakujiIdx !== -1) { fightCards(attackers, kakujiIdx, 'enemy'); if (aiFinishAction('attack:nagamine:kakuji')) break; continue; }
@@ -3317,9 +3344,11 @@
                         spawnDeathEffect(targetIdStr);
                         let d = targetField.splice(actualEnemyIndex, 1)[0]; sendToGraveyard(d, targetPlayerStr); isDefenderDestroyed = true; logMsg += `\n[${d.name}] を倒した！`; 
                     }
+                    logMsg = applyIceAttackOnHit(defender, myField, logMsg, targetMode);
                 } else if (hit.blocked) {
                     logMsg += `\n[${defender.name}] は防御力${hit.def}で攻撃を防いだ！`;
                     shakeDamageCard(targetIdStr);
+                    logMsg = applyIceAttackOnHit(defender, myField, logMsg, targetMode);
                 }
             }
             
@@ -3382,6 +3411,7 @@
                     logMsg += `\n[${kakuji.name}]が身代わりとなり、防御力${hit.def}で攻撃を防いだ！`;
                     shakeDamageCard(kakujiIdStr);
                 }
+                if (!hit.negated) logMsg = applyIceAttackOnHit(kakuji, myField, logMsg, targetMode);
                 logMsg += "\nしかし、かばわれた！";
 
                 if (isKakujiDestroyed && isRevengeActive) {
@@ -3527,7 +3557,12 @@
 
             if (currentTurn === 'A') {
                 playerTurnCount++;
+                turnsSinceLastSkillDraft++;
                 endTurnMsg += applySkillTurnStartForPlayer();
+            }
+
+            if (currentTurn === 'B' && isNagamineMode()) {
+                endTurnMsg += applyNagamineInstantKill();
             }
 
             if (isGarbageStationActive()) {
@@ -3618,10 +3653,10 @@
                 weak: '手札の順番通りにぎこちなくプレイします。',
                 normal: '状況に応じて呪文・先生・武器を使い分けます。',
                 strong: '有利な交換と致命の一撃を狙う上級AIです。',
-                kakuji: 'AIが出す先生は全員「守護」になります。',
-                usui: 'AIが出す先生の攻撃力が2倍になります。',
-                george: 'あなたの先生が相手プレイヤーへ直接攻撃すると、反省文99ターン（行動不能）になります。',
-                nagamine: '手札2倍・HP2倍・出牌2倍/ターン＋最強の思考ロジック。'
+                kakuji: 'AIが出す先生は全員「守護」＋防御力2倍になります。',
+                usui: 'AIが出す先生の攻撃力が3倍になります。',
+                george: 'あなたの先生が相手プレイヤーへ直接攻撃すると反省文99T。AIのジョージの体力が2倍。',
+                nagamine: '手札2倍・HP10倍・出牌2倍/ターン・毎ターン即死1体・プレイヤー直撃優先＋最強AI。'
             };
             el.textContent = descs[sel.value] || '';
         }
