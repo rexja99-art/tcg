@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>先生カードゲーム - AI対戦 安定版</title>
+    <title>先生カードゲーム - AI対戦 ベータ版</title>
     <style>
         body { font-family: sans-serif; text-align: center; background: #e8f5e9; margin: 0; padding: 5px; user-select: none; font-size: 13px; overflow-x: hidden; }
         h1 { font-size: 18px; margin: 5px 0; color: #155724; }
@@ -55,18 +55,32 @@
         @keyframes cutinAnim { 0% { transform: translateX(-100%) skewX(-15deg); opacity: 0; } 12%, 88% { transform: translateX(0) skewX(-15deg); opacity: 1; } 100% { transform: translateX(100%) skewX(-15deg); opacity: 0; } }
         .cutin-box { position: fixed; top: 35%; left: 0; width: 100%; background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(220,53,69,0.9) 20%, rgba(220,53,69,0.9) 80%, rgba(0,0,0,0) 100%); color: white; z-index: 10000; padding: 15px 0; text-align: center; animation: cutinAnim 2s forwards; pointer-events: none; border-top: 2px solid #ffc107; border-bottom: 2px solid #ffc107; }
         .sound-setting { font-weight: bold; font-size: 14px; margin: 8px 0 12px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+        .cutin-box.gold-cutin { background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(255,193,7,0.95) 20%, rgba(255,193,7,0.95) 80%, rgba(0,0,0,0) 100%); border-top-color: #fff; border-bottom-color: #fff; }
+        .cutin-box.gold-cutin .cutin-name { color: #fff; text-shadow: 2px 2px 4px #856404; }
         .cutin-name { font-size: 24px; font-weight: 900; margin: 0 0 5px 0; color: #ffc107; text-shadow: 2px 2px 4px black; }
+        #skill-pick-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 20000; justify-content: center; align-items: center; flex-direction: column; padding: 12px; box-sizing: border-box; }
+        #skill-pick-overlay.active { display: flex; }
+        #skill-pick-overlay h2 { color: #ffc107; font-size: 22px; margin: 0 0 8px; text-shadow: 0 2px 6px #000; }
+        #skill-pick-sub { color: #eee; font-size: 12px; margin-bottom: 14px; }
+        #skill-pick-options { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; max-width: 720px; }
+        .skill-pick-card { width: 200px; min-height: 140px; background: linear-gradient(145deg, #fff 0%, #f0f4ff 100%); border: 3px solid #6f42c1; border-radius: 12px; padding: 12px; cursor: pointer; text-align: left; box-shadow: 0 6px 20px rgba(0,0,0,0.35); transition: transform 0.15s, box-shadow 0.15s; }
+        .skill-pick-card:hover { transform: translateY(-4px) scale(1.03); box-shadow: 0 10px 28px rgba(111,66,193,0.45); }
+        .skill-pick-star { font-size: 16px; color: #ffaa00; margin-bottom: 4px; }
+        .skill-pick-name { font-size: 14px; font-weight: bold; color: #333; margin-bottom: 6px; line-height: 1.3; }
+        .skill-pick-type { font-size: 10px; color: #6f42c1; font-weight: bold; margin-bottom: 4px; }
+        .skill-pick-desc { font-size: 10px; color: #555; line-height: 1.35; }
+        #player-skills-bar { font-size: 10px; color: #444; background: #fff8e1; border: 1px solid #ffc107; border-radius: 6px; padding: 4px 8px; margin: 4px auto; max-width: 600px; text-align: left; line-height: 1.35; display: none; }
         .cutin-text { font-size: 15px; margin: 0; font-weight: bold; text-shadow: 1px 1px 3px black; line-height: 1.35; padding: 0 12px; }
         #surrender-btn { position: absolute; top: 10px; right: 10px; background: #dc3545; color: white; border: none; border-radius: 5px; padding: 5px 10px; z-index: 1000; cursor: pointer; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">🧪 ベータ版 Ver 31.21</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">🧪 ベータ版 Ver 31.22</span></h1>
         <div class="patch-notes">
-            <strong>📋 変更履歴（Ver 31.21）</strong><br>
-            ・🎚️ <b>AI難易度刷新</b>：かくじぃ級・薄井級・ジョージ級・長峰級を追加（旧チート→長峰級）<br>
-            ・👹 <b>Ver 31.20</b>：AI難易度「チート」
+            <strong>📋 変更履歴（Ver 31.22）</strong><br>
+            ・✨ <b>スキル獲得システム</b>（オートバトラー要素）・三谷アビリティ修正・AIジョージ回避改善<br>
+            ・🎚️ <b>Ver 31.21</b>：AI難易度刷新
         </div>
 
         <div class="win-counter">🏆 現在の戦績: あなた <span id="win-player" style="color:#007bff">0</span> - <span id="win-ai" style="color:#dc3545">0</span> AI</div>
@@ -100,6 +114,10 @@
         </div>
         <br>
         <label class="sound-setting">
+            <input type="checkbox" id="skill-enabled-check" checked onchange="syncSkillSetting()"> ✨ スキル獲得（オートバトラー要素）
+        </label>
+        <br>
+        <label class="sound-setting">
             <input type="checkbox" id="sound-enabled-check" onchange="syncSoundSetting()"> 🔊 効果音を有効にする
         </label>
         <br>
@@ -113,6 +131,7 @@
     <div id="game-screen" style="display: none;">
         <button id="surrender-btn" onclick="surrender()">🏳️ 降参</button>
         <div id="turn-indicator" style="font-size: 15px; font-weight: bold; margin: 5px; padding: 5px; border-radius: 5px;"></div>
+        <div id="player-skills-bar"></div>
         <div id="action-log-container" style="width: 95%; max-width: 600px; margin: 5px auto; background: #fff; border: 1px solid #ccc; border-radius: 5px; text-align: left; padding: 5px; box-sizing: border-box;">
             <div style="font-size: 11px; font-weight: bold; border-bottom: 1px solid #ccc; margin-bottom: 3px; color: #555;">📖 行動ログ</div>
             <div id="action-log" style="height: 100px; overflow-y: auto; font-size: 11.5px; color: #333; line-height: 1.4;"></div>
@@ -150,6 +169,12 @@
         </div>
     </div>
 
+    <div id="skill-pick-overlay">
+        <h2>✨ スキル獲得！</h2>
+        <div id="skill-pick-sub">3つから1つ選んでください</div>
+        <div id="skill-pick-options"></div>
+    </div>
+
     <script>
         // ==========================================
         // グローバル変数の宣言
@@ -182,6 +207,370 @@
         let bonusTeacherSummonsA = 0, bonusTeacherSummonsB = 0;
         let smokingNextTicket = 1, smokingCurrentCall = 1;
         const GUARDIAN_BUILDING_IDS = [306, 307, 308];
+
+        let skillEnabled = localStorage.getItem('tcgSkillOn') !== 'false';
+        let skillPickIndex = 0;
+        let playerTurnCount = 0;
+        let skillPickResumeCallback = null;
+        let confusionTurnsB = 0;
+        let playerSkillState = createEmptyPlayerSkillState();
+
+        function createEmptyPlayerSkillState() {
+            return {
+                allyAtkPct: 0, allyDfnPct: 0, hurryBonus: 0, dmgReducePct: 0, nullifyAtkPct: 0,
+                critPct: 0, statusImmunePct: 0, wanderPct: 0, drainHeal: false,
+                paralyzeEnemyPct: 0, confuseEnemyPct: 0, summonSameTurn: false,
+                firstTurnInvincible: false, extraHandSlots: 0, skillBonusTeacherSummons: 0,
+                doubleAttack: false, randomSummonPerTurn: 0, goldCutin: false, allyReviveBonus: 0,
+                pickedSkills: []
+            };
+        }
+
+        function isSkillSystemEnabled() { return skillEnabled; }
+
+        function syncSkillSetting() {
+            const el = document.getElementById('skill-enabled-check');
+            if (el) { skillEnabled = el.checked; localStorage.setItem('tcgSkillOn', skillEnabled ? 'true' : 'false'); }
+        }
+
+        function loadSkillSetting() {
+            const el = document.getElementById('skill-enabled-check');
+            if (el) { el.checked = skillEnabled; }
+        }
+
+        const SKILL_STAR_RATES = [
+            [80, 15, 4, 0.9, 0.1],
+            [70, 20, 7, 2, 1],
+            [60, 25, 10, 3, 2],
+            [50, 28, 12, 6, 4],
+            [40, 30, 15, 10, 5]
+        ];
+
+        function rollSkillStar() {
+            const rates = SKILL_STAR_RATES[Math.min(skillPickIndex, SKILL_STAR_RATES.length - 1)];
+            let r = Math.random() * 100, acc = 0;
+            for (let i = 0; i < 5; i++) { acc += rates[i]; if (r < acc) return i + 1; }
+            return 1;
+        }
+
+        function buildSkillPool() {
+            const ps = () => playerSkillState;
+            const pool = [];
+            const reg = (star, permanent, name, desc, apply) => pool.push({ star, permanent, name, desc, apply });
+            reg(1, true, '永久 味方ATK+10%', '味方ティーチャーの攻撃力+10%（累積）', () => { ps().allyAtkPct += 10; return '永久：味方ATK+10%'; });
+            reg(1, false, '味方DEF+10%', '味方ティーチャーの防御力+10%', () => { fieldA.forEach(c => { if (c.type === 'teacher') c.dfn = Math.floor(c.dfn * 1.1); }); return '味方DEF+10%'; });
+            reg(1, false, 'HP+10%回復', '自分のHPを10%回復', () => { hpA = Math.min(getPlayerMaxHp('A'), hpA + Math.floor(getPlayerMaxHp('A') * 0.1)); return 'HP+10%回復'; });
+            reg(1, false, '敵HP-10%', '敵プレイヤーの体力-10%', () => { hpB = Math.max(0, hpB - Math.floor(getPlayerMaxHp('B') * 0.1)); return '敵HP-10%'; });
+            reg(1, false, '手札に長峰', '手札に長峰を1枚加える', () => { const c = initCardState(cardById(1)); pushCardToHand(handA, c, 'A') || sendToGraveyard(c, 'A'); return '手札に長峰追加'; });
+            reg(1, true, '永久 早くしろ+5', '早くしろボタン上限+5（累積）', () => { ps().hurryBonus += 5; return '永久：早くしろ+5'; });
+            reg(1, false, '敵にランダム状態異常', '敵の先生1体にランダムな状態異常', () => applyRandomStatusToEnemyTeacher(1));
+            reg(1, true, '永久 被ダメ-1%', '被ダメージ-1%（累積・最大90%）', () => { ps().dmgReducePct = Math.min(90, ps().dmgReducePct + 1); return '永久：被ダメ-1%'; });
+            reg(1, false, 'ランダム召喚×1', 'ランダムなカードを1枚手札に', () => skillDrawRandomCards(1));
+            reg(1, false, '手札シャッフル', '手札をシャッフル', () => { shufflePlayerHand(); return '手札シャッフル'; });
+            reg(1, true, '永久 攻撃無効1%', '1%で攻撃無効（累積）', () => { ps().nullifyAtkPct += 1; return '永久：攻撃無効+1%'; });
+            reg(1, false, '敵やけど', '敵プレイヤーをやけど状態に', () => { burnB = Math.max(burnB, 1); return '敵をやけどに'; });
+            reg(1, true, '永久 クリティカル1%', '1%でクリティカル（累積）', () => { ps().critPct += 1; return '永久：クリ+1%'; });
+            reg(1, false, '500G獲得', '500Gもらえる（このゲームでは無意味）', () => '💰 500G獲得！（…使い道はない）');
+            reg(2, true, '永久 味方ATK+20%', '味方ティーチャーの攻撃力+20%（累積）', () => { ps().allyAtkPct += 20; return '永久：味方ATK+20%'; });
+            reg(2, false, '味方DEF+20%', '味方ティーチャーの防御力+20%', () => { fieldA.forEach(c => { if (c.type === 'teacher') c.dfn = Math.floor(c.dfn * 1.2); }); return '味方DEF+20%'; });
+            reg(2, false, 'HP+20%回復', '自分のHPを20%回復', () => { hpA = Math.min(getPlayerMaxHp('A'), hpA + Math.floor(getPlayerMaxHp('A') * 0.2)); return 'HP+20%回復'; });
+            reg(2, false, '敵HP-5%', '敵プレイヤーの体力-5%', () => { hpB = Math.max(0, hpB - Math.floor(getPlayerMaxHp('B') * 0.05)); return '敵HP-5%'; });
+            reg(2, true, '永久 早くしろ+10', '早くしろボタン上限+10（累積）', () => { ps().hurryBonus += 10; return '永久：早くしろ+10'; });
+            reg(2, false, '東大組登場', 'フィールドにジョージと長峰を登場', () => { spawnSkillTeacher(5); spawnSkillTeacher(1); return '東大組（ジョージ＆長峰）登場'; });
+            reg(2, true, '永久 被ダメ-2%', '被ダメージ-2%（累積・最大90%）', () => { ps().dmgReducePct = Math.min(90, ps().dmgReducePct + 2); return '永久：被ダメ-2%'; });
+            reg(2, false, 'ランダム召喚×2', 'ランダムなカードを2枚手札に', () => skillDrawRandomCards(2));
+            reg(2, false, '敵猛毒', '敵プレイヤーを猛毒状態に', () => { poisonB = Math.max(poisonB, 2); return '敵を猛毒に'; });
+            reg(2, false, '先生ランダム変化', '手札とフィールドの先生がランダムな先生に', () => skillRandomizeAllPlayerTeachers());
+            reg(2, true, '永久 クリティカル3%', '3%でクリティカル（累積）', () => { ps().critPct += 3; return '永久：クリ+3%'; });
+            reg(2, true, '永久 徘徊10%', '10%で味方先生が徘徊（累積）', () => { ps().wanderPct += 10; return '永久：徘徊+10%'; });
+            reg(3, true, '永久 味方ATK+40%', '味方ティーチャーの攻撃力+40%（累積）', () => { ps().allyAtkPct += 40; return '永久：味方ATK+40%'; });
+            reg(3, false, '味方DEF+40%', '味方ティーチャーの防御力+40%', () => { fieldA.forEach(c => { if (c.type === 'teacher') c.dfn = Math.floor(c.dfn * 1.4); }); return '味方DEF+40%'; });
+            reg(3, false, 'HP+40%回復', '自分のHPを40%回復', () => { hpA = Math.min(getPlayerMaxHp('A'), hpA + Math.floor(getPlayerMaxHp('A') * 0.4)); return 'HP+40%回復'; });
+            reg(3, false, '敵HP-15%', '敵プレイヤーの体力-15%', () => { hpB = Math.max(0, hpB - Math.floor(getPlayerMaxHp('B') * 0.15)); return '敵HP-15%'; });
+            reg(3, true, '永久 早くしろ+15', '早くしろボタン上限+15（累積）', () => { ps().hurryBonus += 15; return '永久：早くしろ+15'; });
+            reg(3, true, '永久 致命傷耐性', '全味方先生+1回致命傷耐性（累積）', () => { ps().allyReviveBonus += 1; fieldA.forEach(c => { if (c.type === 'teacher') c.revivesLeft += 1; }); return '永久：致命傷耐性+1'; });
+            reg(3, true, '永久 状態異常無効10%', '10%で状態異常無効（累積）', () => { ps().statusImmunePct = Math.min(100, ps().statusImmunePct + 10); return '永久：状態異常無効+10%'; });
+            reg(3, true, '永久 被ダメ-4%', '被ダメージ-4%（累積・最大90%）', () => { ps().dmgReducePct = Math.min(90, ps().dmgReducePct + 4); return '永久：被ダメ-4%'; });
+            reg(3, false, 'ランダム召喚×3', 'ランダムなカードを3枚手札に', () => skillDrawRandomCards(3));
+            reg(3, false, '敵超毒', '敵プレイヤーを超毒状態に', () => { poisonB = Math.max(poisonB, 3); return '敵を超毒に'; });
+            reg(3, true, '永久 クリティカル8%', '8%でクリティカル（累積）', () => { ps().critPct += 8; return '永久：クリ+8%'; });
+            reg(3, false, 'カットインが金', 'カットインが金色になる（永久）', () => { ps().goldCutin = true; return '永久：金色カットイン'; });
+            reg(4, true, '永久 味方ATK+60%', '味方ティーチャーの攻撃力+60%（累積）', () => { ps().allyAtkPct += 60; return '永久：味方ATK+60%'; });
+            reg(4, false, '味方DEF+60%', '味方ティーチャーの防御力+60%', () => { fieldA.forEach(c => { if (c.type === 'teacher') c.dfn = Math.floor(c.dfn * 1.6); }); return '味方DEF+60%'; });
+            reg(4, false, 'HP+60%回復', '自分のHPを60%回復', () => { hpA = Math.min(getPlayerMaxHp('A'), hpA + Math.floor(getPlayerMaxHp('A') * 0.6)); return 'HP+60%回復'; });
+            reg(4, true, '永久 早くしろ+20', '早くしろボタン上限+20（累積）', () => { ps().hurryBonus += 20; return '永久：早くしろ+20'; });
+            reg(4, true, '永久 手札+1', '手札スロット+1（累積）', () => { ps().extraHandSlots += 1; resizePlayerHand(); drawHand('A'); return '永久：手札+1'; });
+            reg(4, true, '永久 即攻撃', '出したターンから攻撃可能', () => { ps().summonSameTurn = true; return '永久：召喚ターン即攻撃'; });
+            reg(4, false, '手札全長峰化', '手札をすべて長峰にする', () => { for (let i = 0; i < handA.length; i++) handA[i] = initCardState(cardById(1)); return '手札を全て長峰に'; });
+            reg(4, true, '永久 状態異常無効20%', '20%で状態異常無効（累積）', () => { ps().statusImmunePct = Math.min(100, ps().statusImmunePct + 20); return '永久：状態異常無効+20%'; });
+            reg(4, true, '永久 被ダメ-6%', '被ダメージ-6%（累積・最大90%）', () => { ps().dmgReducePct = Math.min(90, ps().dmgReducePct + 6); return '永久：被ダメ-6%'; });
+            reg(4, true, '永久 クリティカル12%', '12%でクリティカル（累積）', () => { ps().critPct += 12; return '永久：クリ+12%'; });
+            reg(4, true, '永久 ドレイン', '与えたダメージ分HP回復', () => { ps().drainHeal = true; return '永久：ドレイン'; });
+            reg(4, true, '永久 麻痺50%', 'ターン開始時相手先生50%麻痺', () => { ps().paralyzeEnemyPct += 50; return '永久：麻痺50%'; });
+            reg(4, true, '永久 混乱10%', 'ターン開始時10%で敵1ターン混乱', () => { ps().confuseEnemyPct += 10; return '永久：混乱+10%'; });
+            reg(5, true, '永久 味方ATK+100%', '味方ティーチャーの攻撃力+100%（累積）', () => { ps().allyAtkPct += 100; return '永久：味方ATK+100%'; });
+            reg(5, false, '味方DEF+100%', '味方ティーチャーの防御力+100%', () => { fieldA.forEach(c => { if (c.type === 'teacher') c.dfn = Math.floor(c.dfn * 2); }); return '味方DEF+100%'; });
+            reg(5, false, 'HP+100%回復', '自分のHPを100%回復', () => { hpA = getPlayerMaxHp('A'); return 'HP全回復'; });
+            reg(5, true, '永久 早くしろ+30', '早くしろボタン上限+30（累積）', () => { ps().hurryBonus += 30; return '永久：早くしろ+30'; });
+            reg(5, true, '永久 初ターン無敵', '出した最初のターン無敵', () => { ps().firstTurnInvincible = true; return '永久：初ターン無敵'; });
+            reg(5, true, '永久 召喚+1', 'ティーチャー召喚回数+1/ターン（累積）', () => { ps().skillBonusTeacherSummons += 1; return '永久：召喚+1/ターン'; });
+            reg(5, true, '永久 状態異常無効50%', '50%で状態異常無効（累積）', () => { ps().statusImmunePct = Math.min(100, ps().statusImmunePct + 50); return '永久：状態異常無効+50%'; });
+            reg(5, true, '永久 被ダメ-10%', '被ダメージ-10%（累積・最大90%）', () => { ps().dmgReducePct = Math.min(90, ps().dmgReducePct + 10); return '永久：被ダメ-10%'; });
+            reg(5, true, '永久 2回攻撃', '味方ティーチャー2回攻撃', () => { ps().doubleAttack = true; return '永久：2回攻撃'; });
+            reg(5, true, '永久 毎ターン召喚', '毎ターンランダムカード1枚', () => { ps().randomSummonPerTurn += 1; return '永久：毎ターン召喚+1'; });
+            reg(5, true, '永久 クリティカル30%', '30%でクリティカル（累積）', () => { ps().critPct += 30; return '永久：クリ+30%'; });
+            reg(5, false, '敵全状態異常', '敵の先生全員に全状態異常', () => skillApplyAllStatusesToEnemies());
+            reg(5, false, '99999G獲得', '99999Gもらえる（このゲームでは無意味）', () => '💰 99999G獲得！（…使い道はない）');
+            reg(5, true, '永久 混乱25%', 'ターン開始時25%で敵1ターン混乱', () => { ps().confuseEnemyPct += 25; return '永久：混乱+25%'; });
+            return pool;
+        }
+
+        let SKILL_POOL = null;
+        function getSkillPool() { if (!SKILL_POOL) SKILL_POOL = buildSkillPool(); return SKILL_POOL; }
+
+        function applyRandomStatusToEnemyTeacher(count) {
+            const targets = fieldB.filter(c => c.type === 'teacher' && !c.inLab && c.kenonTurns === 0);
+            if (!targets.length) return 'しかし対象がいなかった';
+            for (let n = 0; n < count; n++) {
+                const t = targets[Math.floor(Math.random() * targets.length)];
+                const s = ['hanseibun', 'video', 'sleep', 'freeze', 'bind', 'laugh'][Math.floor(Math.random() * 6)];
+                if (s === 'hanseibun') t.hanseibunTurns = 2;
+                else if (s === 'video') t.videoTurns = 2;
+                else if (s === 'sleep') t.sleepTurns = 2;
+                else if (s === 'freeze') t.freezeTurns = 2;
+                else if (s === 'bind') t.bindTurns = 2;
+                else t.isLaughing = true;
+            }
+            return '敵にランダム状態異常';
+        }
+
+        function rollSkillStatusImmune() {
+            return playerSkillState.statusImmunePct > 0 && Math.random() * 100 < playerSkillState.statusImmunePct;
+        }
+
+        function skillDrawRandomCards(n) {
+            const types = ['teacher', 'spell', 'weapon', 'building'];
+            for (let i = 0; i < n; i++) {
+                const t = types[Math.floor(Math.random() * types.length)];
+                const c = poolsA[t].draw();
+                pushCardToHand(handA, c, 'A') || sendToGraveyard(c, 'A');
+            }
+            return `ランダムカード${n}枚`;
+        }
+
+        function shufflePlayerHand() {
+            const cards = handA.filter(c => c);
+            for (let i = cards.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [cards[i], cards[j]] = [cards[j], cards[i]]; }
+            handA.fill(null);
+            cards.forEach((c, i) => { handA[i] = c; });
+        }
+
+        function spawnSkillTeacher(id) {
+            const c = initCardState(cardById(id));
+            c.canAttack = false;
+            fieldA.push(c);
+            applyPlayerSkillOnTeacherEnter(c);
+        }
+
+        function skillRandomizeAllPlayerTeachers() {
+            const teachers = CARD_LIST.filter(c => c.type === 'teacher' && c.id < 400);
+            const pick = () => initCardState(teachers[Math.floor(Math.random() * teachers.length)]);
+            for (let i = 0; i < handA.length; i++) if (handA[i] && handA[i].type === 'teacher') handA[i] = pick();
+            fieldA.forEach((c, i) => { if (c.type === 'teacher') fieldA[i] = pick(); });
+            return '手札・フィールドの先生をランダム化';
+        }
+
+        function skillApplyAllStatusesToEnemies() {
+            fieldB.forEach(t => {
+                if (t.type !== 'teacher' || t.inLab || t.kenonTurns > 0 || t.id === 11) return;
+                t.hanseibunTurns = 2; t.videoTurns = 2; t.sleepTurns = 2; t.freezeTurns = 2;
+                t.bindTurns = 2; t.isLaughing = true; t.pechankoTurns = 1;
+            });
+            poisonB = Math.max(poisonB, 3); burnB = Math.max(burnB, 3);
+            return '敵先生全員に状態異常';
+        }
+
+        function resizePlayerHand() {
+            const size = getHandConfig('A').size;
+            while (handA.length < size) handA.push(null);
+        }
+
+        function generateSkillOffers() {
+            const pool = getSkillPool();
+            const offers = [];
+            let guard = 0;
+            while (offers.length < 3 && guard++ < 80) {
+                const star = rollSkillStar();
+                const candidates = pool.filter(s => s.star === star);
+                if (!candidates.length) continue;
+                const skill = candidates[Math.floor(Math.random() * candidates.length)];
+                if (!offers.some(o => o.name === skill.name)) offers.push(skill);
+            }
+            while (offers.length < 3) {
+                const skill = pool[Math.floor(Math.random() * pool.length)];
+                if (!offers.some(o => o.name === skill.name)) offers.push(skill);
+            }
+            return offers;
+        }
+
+        function updatePlayerSkillsBar() {
+            const bar = document.getElementById('player-skills-bar');
+            if (!bar) return;
+            if (!isSkillSystemEnabled() || !playerSkillState.pickedSkills.length) { bar.style.display = 'none'; return; }
+            bar.style.display = 'block';
+            bar.innerHTML = '<b>✨獲得スキル:</b> ' + playerSkillState.pickedSkills.map(s => `[★${s.star}${s.permanent ? '永久' : ''}] ${s.name}`).join(' / ');
+        }
+
+        function beginSkillPickPhase(onDone) {
+            if (!isSkillSystemEnabled()) { if (onDone) onDone(); return; }
+            skillPickResumeCallback = onDone;
+            const overlay = document.getElementById('skill-pick-overlay');
+            const opts = document.getElementById('skill-pick-options');
+            const offers = generateSkillOffers();
+            opts.innerHTML = '';
+            document.getElementById('skill-pick-sub').textContent = `第${skillPickIndex + 1}回目 — 3つから1つ選んでください`;
+            offers.forEach(skill => {
+                const el = document.createElement('div');
+                el.className = 'skill-pick-card';
+                el.innerHTML = `<div class="skill-pick-star">${'★'.repeat(skill.star)}</div><div class="skill-pick-type">${skill.permanent ? '🔁 永久スキル' : '⚡ 単発スキル'}</div><div class="skill-pick-name">${skill.name}</div><div class="skill-pick-desc">${skill.desc}</div>`;
+                el.onclick = () => selectSkill(skill);
+                opts.appendChild(el);
+            });
+            overlay.classList.add('active');
+        }
+
+        function selectSkill(skill) {
+            const msg = skill.apply();
+            playerSkillState.pickedSkills.push({ star: skill.star, permanent: skill.permanent, name: skill.name });
+            skillPickIndex++;
+            addLog(`✨ スキル獲得：[★${skill.star}] ${skill.name} — ${msg}`);
+            document.getElementById('skill-pick-overlay').classList.remove('active');
+            updatePlayerSkillsBar();
+            updateScreen();
+            checkGameOver();
+            const cb = skillPickResumeCallback;
+            skillPickResumeCallback = null;
+            if (cb) cb();
+        }
+
+        function applyPlayerSkillOnTeacherEnter(card) {
+            if (!card || card.type !== 'teacher') return;
+            if (playerSkillState.allyReviveBonus > 0 && card.revivesLeft === 0 && card.id !== 7) card.revivesLeft = playerSkillState.allyReviveBonus;
+            if (playerSkillState.firstTurnInvincible) card.invincibleTurns = 1;
+            if (playerSkillState.summonSameTurn && card.hanseibunTurns === 0 && card.videoTurns === 0 && card.sleepTurns === 0 && !card.isPetrified && card.kenonTurns === 0 && card.freezeTurns === 0 && card.bindTurns === 0) {
+                card.canAttack = true;
+                card.fieldTurns = 0;
+            }
+        }
+
+        function getSkillModifiedAtk(card, player) {
+            if (!card || card.type !== 'teacher') return card ? (card.isLaughing ? 1 : card.atk) : 0;
+            let atk = card.isLaughing ? 1 : card.atk;
+            if (player === 'A' && playerSkillState.allyAtkPct > 0) atk = Math.floor(atk * (1 + playerSkillState.allyAtkPct / 100));
+            return atk;
+        }
+
+        function applySkillCritIfNeeded(atk, player) {
+            if (player !== 'A' || playerSkillState.critPct <= 0) return { atk, crit: false };
+            if (Math.random() * 100 < playerSkillState.critPct) return { atk: atk * 2, crit: true };
+            return { atk, crit: false };
+        }
+
+        function applySkillDamageToPlayerA(rawDmg) {
+            if (rawDmg <= 0) return 0;
+            if (playerSkillState.nullifyAtkPct > 0 && Math.random() * 100 < playerSkillState.nullifyAtkPct) return -1;
+            let dmg = rawDmg * (1 - Math.min(90, playerSkillState.dmgReducePct) / 100);
+            return Math.max(0, Math.floor(dmg));
+        }
+
+        function applySkillTurnStartForPlayer() {
+            let msg = '';
+            if (playerSkillState.randomSummonPerTurn > 0) {
+                for (let i = 0; i < playerSkillState.randomSummonPerTurn; i++) {
+                    const types = ['teacher', 'spell', 'weapon', 'building'];
+                    const c = poolsA[types[Math.floor(Math.random() * types.length)]].draw();
+                    pushCardToHand(handA, c, 'A') || sendToGraveyard(c, 'A');
+                }
+                msg += `\n✨ スキル：ランダムカード${playerSkillState.randomSummonPerTurn}枚`;
+            }
+            if (playerSkillState.paralyzeEnemyPct > 0) {
+                fieldB.forEach(t => {
+                    if (t.type === 'teacher' && !t.inLab && t.kenonTurns === 0 && Math.random() * 100 < playerSkillState.paralyzeEnemyPct) {
+                        t.sleepTurns = Math.max(t.sleepTurns, 1);
+                    }
+                });
+                msg += `\n✨ スキル：麻痺発動`;
+            }
+            if (playerSkillState.confuseEnemyPct > 0 && Math.random() * 100 < playerSkillState.confuseEnemyPct) {
+                confusionTurnsB = 1;
+                msg += `\n✨ スキル：敵が混乱！`;
+            }
+            return msg;
+        }
+
+        function applySkillWanderAtTurnEnd() {
+            if (playerSkillState.wanderPct <= 0) return '';
+            let msg = '';
+            for (let i = fieldA.length - 1; i >= 0; i--) {
+                const c = fieldA[i];
+                if (c.type === 'teacher' && !c.inLab && c.kenonTurns === 0 && Math.random() * 100 < playerSkillState.wanderPct) {
+                    const w = fieldA.splice(i, 1)[0];
+                    wanderSpace.push({ card: w, originalPlayer: 'A', remainingTurns: 2 });
+                    msg += `\n✨ [${w.name}] がスキル徘徊`;
+                }
+            }
+            return msg;
+        }
+
+        function triggerMitaniEffects() {
+            let msg = '';
+            ['A', 'B'].forEach(owner => {
+                const ownerField = owner === 'A' ? fieldA : fieldB;
+                const enemyField = owner === 'A' ? fieldB : fieldA;
+                ownerField.forEach(card => {
+                    if (card.id !== 8 || card.inLab || card.kenonTurns > 0) return;
+                    if (!isTeacherAbilityBlocked(owner, card)) {
+                        if (!isHokenshitsuActive()) {
+                            const candidates = enemyField.filter(c => c.type === 'teacher' && c.videoTurns === 0 && c.hanseibunTurns === 0 && !c.isPetrified && !c.inLab && c.kenonTurns === 0);
+                            if (candidates.length > 0) {
+                                const target = candidates[Math.floor(Math.random() * candidates.length)];
+                                target.videoTurns = 1;
+                                msg += `\n[三谷]の効果！相手の[${target.name}]は動画に夢中！`;
+                                sendCardCutin(card);
+                            }
+                        }
+                    } else notifySidwellBlock(owner, card);
+                });
+            });
+            return msg;
+        }
+
+        function aiFindAlternateTargetExcludingGeorge() {
+            let bestIdx = -1, bestScore = -99999;
+            for (let i = 0; i < fieldA.length; i++) {
+                const t = fieldA[i];
+                if (t.id === 5 || t.type !== 'teacher' || t.inLab || t.kenonTurns > 0) continue;
+                let score = t.atk * 2 + t.dfn;
+                if (score > bestScore) { bestScore = score; bestIdx = i; }
+            }
+            return bestIdx;
+        }
+
+        function aiFinishAttackOrEndTurn(attackers, tagPrefix) {
+            const altIdx = aiFindAlternateTargetExcludingGeorge();
+            if (altIdx !== -1) {
+                fightCards(attackers, altIdx, 'enemy');
+                return aiFinishAction(tagPrefix + ':alt-' + altIdx);
+            }
+            if (buildingStack.length > 0) {
+                fightCards(attackers, 0, 'building');
+                return aiFinishAction(tagPrefix + ':building-fallback');
+            }
+            addLog('【AI】ジョージを避け、他に攻撃対象がないためターンを終了します');
+            aiForceEndTurn = true;
+            return true;
+        }
+
 
         const CUTIN_DURATION = 2000;
         let cutinQueue = [];
@@ -358,7 +747,7 @@
             const { ability, effect } = cutinQueue.shift();
             playSynthSound('swordDraw');
             const box = document.createElement('div');
-            box.className = 'cutin-box';
+            box.className = 'cutin-box' + (playerSkillState.goldCutin ? ' gold-cutin' : '');
             box.innerHTML = `<div class="cutin-name">${ability}</div><div class="cutin-text">${effect}</div>`;
             document.body.appendChild(box);
             setTimeout(() => {
@@ -378,13 +767,17 @@
                 isPiercing: false, isLaughing: false, attacksLeft: 0, freezeTurns: 0, isGuardian: false,
                 hasSupaneti: false, numbering: 0, bindTurns: 0, isLineTracer: false, isCriticalNext: false,
                 isSpreadAttack: false, kenonHidden: false, baitenAtkTurns: 0,
-                pendingSummonAfterKenon: false, summonOwner: null, usuiDoubled: false
+                pendingSummonAfterKenon: false, summonOwner: null, usuiDoubled: false, invincibleTurns: 0
             };
         }
 
         let kenonResolving = false;
 
-        function getHurryLimit(player) { return 10 + (player === 'A' ? hurryBonusA : hurryBonusB); }
+        function getHurryLimit(player) {
+            let base = 10 + (player === 'A' ? hurryBonusA : hurryBonusB);
+            if (player === 'A') base += playerSkillState.hurryBonus || 0;
+            return base;
+        }
 
         function isMyTurn() { return currentTurn === 'A'; } 
         function canExecuteAction() { return currentTurn === 'A' || currentTurn === 'B'; }
@@ -681,6 +1074,11 @@
 
         function getHandConfig(player) {
             const baseSlots = ['any', 'spell', 'weapon', 'teacher', 'teacher', 'teacher'];
+            if (player === 'A') {
+                const extra = playerSkillState.extraHandSlots || 0;
+                const slots = [...baseSlots, ...Array(extra).fill('any')];
+                return { size: 6 + extra, slotTypes: slots };
+            }
             if (isNagamineMode() && player === 'B') {
                 return { size: 12, slotTypes: [...baseSlots, ...baseSlots] };
             }
@@ -716,7 +1114,11 @@
             hasSummonedTeacherThisTurn = false; hasCastSpellThisTurn = false; hasEquippedWeaponThisTurn = false; hasSummonedBuildingThisTurn = false;
         }
 
-        function getBonusTeacherSummons(player) { return player === 'A' ? bonusTeacherSummonsA : bonusTeacherSummonsB; }
+        function getBonusTeacherSummons(player) {
+            let b = player === 'A' ? bonusTeacherSummonsA : bonusTeacherSummonsB;
+            if (player === 'A') b += playerSkillState.skillBonusTeacherSummons || 0;
+            return b;
+        }
         function addBonusTeacherSummon(player) { if (player === 'A') bonusTeacherSummonsA++; else bonusTeacherSummonsB++; }
 
         function canSummonTeacherThisTurn() {
@@ -844,7 +1246,8 @@
 
         function initGame() {
             hpA = maxHp; hpB = getPlayerMaxHp('B'); prevHpA = maxHp; prevHpB = hpB; currentTurn = Math.random() < 0.5 ? 'A' : 'B';
-            handA = Array(6).fill(null); handB = Array(getHandConfig('B').size).fill(null); fieldA = []; fieldB = []; buildingStack = [];
+            playerSkillState = createEmptyPlayerSkillState(); skillPickIndex = 0; playerTurnCount = 0; confusionTurnsB = 0;
+            handA = Array(getHandConfig('A').size).fill(null); handB = Array(getHandConfig('B').size).fill(null); fieldA = []; fieldB = []; buildingStack = [];
             resetTurnActionCounters();
             attackingCardIndexes = []; philosophySpace = []; wanderSpace = []; akazuSpace = []; 
             if(window.autoTurnEndTimer) { clearTimeout(window.autoTurnEndTimer); window.autoTurnEndTimer = null; }
@@ -862,9 +1265,14 @@
             drawHand('A'); drawHand('B'); 
             let firstPlayer = (currentTurn === 'A') ? myName : enemyName; 
             addLog(`🎲 【${firstPlayer}】の先攻でスタート！(あなたHP: ${maxHp}${isNagamineMode() ? ` / AI HP: ${getPlayerMaxHp('B')}` : ''})`);
+            updatePlayerSkillsBar();
             updateScreen();
             
-            if (currentTurn === 'B') setTimeout(processAiTurn, 1000);
+            const resumeBattle = () => {
+                if (currentTurn === 'B') setTimeout(processAiTurn, 1000);
+            };
+            if (isSkillSystemEnabled()) beginSkillPickPhase(resumeBattle);
+            else resumeBattle();
         }
 
         function clearAiIdleTimer() {
@@ -989,6 +1397,22 @@
 
         async function processAiTurn() {
             if (currentTurn !== 'B' || aiProcessing) return;
+            if (confusionTurnsB > 0) {
+                confusionTurnsB--;
+                addLog('😵 混乱中！AIの先生が味方を攻撃！');
+                let attackers = [], idxs = [];
+                for (let i = 0; i < fieldB.length; i++) {
+                    if (fieldB[i].type === 'teacher' && fieldB[i].canAttack) { attackers.push(fieldB[i]); idxs.push(i); }
+                }
+                const allies = fieldB.map((c, i) => ({ c, i })).filter(x => x.c.type === 'teacher' && !x.c.inLab && x.c.kenonTurns === 0);
+                if (attackers.length && allies.length) {
+                    const tgt = allies[Math.floor(Math.random() * allies.length)].i;
+                    fightCards(idxs, tgt, 'self');
+                }
+                aiProcessing = false;
+                setTimeout(triggerNextTurn, 800);
+                return;
+            }
             aiProcessing = true;
 
             aiTurnSession++;
@@ -1309,8 +1733,7 @@
                                 fightCards(attackers, bestTargetIdx, 'enemy'); if (aiFinishAction('attack:strong:enemy:' + bestTargetIdx)) break; continue;
                             } else {
                                 if (fieldA.some(t => t.id === 5 && !t.inLab && t.kenonTurns === 0)) {
-                                    addLog('【AI】ジョージを避けて攻撃を見送った');
-                                    if (aiFinishAction('attack:strong:skip-george')) break; continue;
+                                    if (aiFinishAttackOrEndTurn(attackers, 'attack:strong:skip-george')) break; continue;
                                 } else {
                                     attackPlayerDirectly(attackers, 'enemy'); if (aiFinishAction('attack:strong:direct2')) break; continue;
                                 }
@@ -1349,8 +1772,7 @@
                             if (bestTargetIdx !== -1) {
                                 fightCards(attackers, bestTargetIdx, 'enemy'); if (aiFinishAction('attack:nagamine:enemy:' + bestTargetIdx)) break; continue;
                             } else if (fieldA.some(t => t.id === 5 && !t.inLab && t.kenonTurns === 0)) {
-                                addLog('【AI】ジョージを避けて攻撃を見送った');
-                                if (aiFinishAction('attack:nagamine:skip-george')) break; continue;
+                                if (aiFinishAttackOrEndTurn(attackers, 'attack:nagamine:skip-george')) break; continue;
                             } else {
                                 attackPlayerDirectly(attackers, 'enemy'); if (aiFinishAction('attack:nagamine:direct')) break; continue;
                             }
@@ -1482,6 +1904,10 @@
 
         /** 攻撃力が防御力を「超えた」場合のみ撃破。防御力はHPとして減算しない。 */
         function resolveTeacherHit(teacher, atk, isPiercing = false, effectiveDfn = null) {
+            if (teacher.invincibleTurns > 0) {
+                const def = (effectiveDfn !== null && effectiveDfn !== undefined) ? effectiveDfn : teacher.dfn;
+                return { broke: false, blocked: false, negated: true, overflow: 0, remDmg: 0, def };
+            }
             const def = (effectiveDfn !== null && effectiveDfn !== undefined) ? effectiveDfn : teacher.dfn;
             const remDmg = applyDamage(teacher, atk, isPiercing);
             if (remDmg <= 0) return { broke: false, blocked: false, negated: true, overflow: 0, remDmg: 0, def };
@@ -1490,6 +1916,7 @@
         }
 
         function isEnjoActive(field) {
+            if (field === fieldA && playerSkillState.doubleAttack) return true;
             return field.some(c => c.id === 25 && !c.inLab && c.kenonTurns === 0);
         }
 
@@ -1498,8 +1925,35 @@
             return isEnjoActive(ownerField) ? Math.floor(teacher.dfn / 2) : teacher.dfn;
         }
 
+        function calcAttackerStrike(card, player) {
+            let dAtk = getSkillModifiedAtk(card, player);
+            if (card.hasSupaneti) dAtk *= 2;
+            if (card.isCriticalNext) dAtk *= 2;
+            return applySkillCritIfNeeded(dAtk, player);
+        }
+
         function getActiveBallHolders() {
             return [...fieldA, ...fieldB].filter(c => c.type === 'teacher' && c.weapons.some(w => w.id === 210) && c.ballTurns > 0 && c.kenonTurns === 0);
+        }
+
+        function dealPlayerHpDamage(player, rawDmg, logRef) {
+            if (rawDmg <= 0) return 0;
+            if (player === 'A') {
+                const finalDmg = applySkillDamageToPlayerA(rawDmg);
+                if (finalDmg < 0) { if (logRef) logRef.msg += '\n✨ スキルで攻撃無効化！'; return 0; }
+                hpA -= finalDmg;
+                return finalDmg;
+            }
+            hpB -= rawDmg;
+            return rawDmg;
+        }
+
+        function applySkillDrainHeal(dmgDealt) {
+            if (currentTurn === 'A' && playerSkillState.drainHeal && dmgDealt > 0) {
+                hpA = Math.min(getPlayerMaxHp('A'), hpA + dmgDealt);
+                return `\n✨ ドレインで ${dmgDealt} 回復`;
+            }
+            return '';
         }
 
         function consumeAttackerTurns(attackers) {
@@ -1807,7 +2261,7 @@
             else if (card.type === 'building') statsHtml = `<span style="color:#ffc107;">🏛️建物</span> <span style="color:#0275d8;">HP${card.dfn}</span>`;
             else if (card.type === 'none') statsHtml = `<span style="color:#6c757d;">◆無種別</span>`;
             else {
-                let dAtk = card.isLaughing ? 1 : card.atk;
+                let dAtk = getSkillModifiedAtk(card, fieldPlayer || (ownerField === fieldA ? 'A' : 'B'));
                 let dfn = (ownerField && card.type === 'teacher') ? getEffectiveDfn(card, ownerField) : card.dfn;
                 let enjoMark = (ownerField && card.type === 'teacher' && isEnjoActive(ownerField) && dfn < card.dfn) ? '🔥' : '';
                 statsHtml = `<span class="card-atk">攻${dAtk}</span><span class="card-dfn">防${dfn}${enjoMark}</span>`;
@@ -2519,6 +2973,7 @@
                 card.canAttack = false; currentField.push(card); currentHand[cardIndex] = null; markTeacherSummonedThisTurn(); readyToPlayIndex = null;
             }
             if (isAiMode && currentTurn === 'B' && card.type === 'teacher' && fieldB.includes(card)) applyAiTeacherDifficultyBonus(card);
+            if (currentTurn === 'A' && card.type === 'teacher' && fieldA.includes(card)) applyPlayerSkillOnTeacherEnter(card);
             addLog(logMsg); updateScreen();
             checkGameOver();
         }
@@ -2679,12 +3134,12 @@
 
             let totalAtk = 0; let attackerNames = []; let attackers = myCardIndexes.map(idx => myField[idx]).filter(c => c);
             if(attackers.length === 0) return;
+            let skillCritMsg = '';
 
             attackers.forEach(card => { 
-                let dAtk = card.isLaughing ? 1 : card.atk;
-                if(card.hasSupaneti) dAtk *= 2;
-                if(card.isCriticalNext) dAtk *= 2;
-                totalAtk += dAtk;
+                const strike = calcAttackerStrike(card, currentTurn);
+                totalAtk += strike.atk;
+                if (strike.crit) skillCritMsg = '\n✨スキルクリティカル！';
                 attackerNames.push(`[${card.name}]`); 
             });
             
@@ -2773,7 +3228,8 @@
                 else if (hitPlayer) {
                     let hpBoxIdStr = targetPlayerStr === 'A' ? 'hp-box-self' : 'hp-box-enemy';
                     spawnEffectAtElement(hpBoxIdStr, 'slash', 0); 
-                    if (targetPlayerStr === 'B') { hpB -= splitDmg; } else { hpA -= splitDmg; }
+                    if (targetPlayerStr === 'B') { hpB -= splitDmg; logMsg += applySkillDrainHeal(splitDmg); }
+                    else { dealPlayerHpDamage('A', splitDmg, { msg: '' }); }
                     logMsg += `\n敵プレイヤーに ${splitDmg} ダメージ！`;
                 }
                 
@@ -2852,10 +3308,8 @@
 
             let attackerNames = attackers.map(c => `[${c.name}]`); 
             attackers.forEach(card => { 
-                let dAtk = card.isLaughing ? 1 : card.atk;
-                if(card.hasSupaneti) dAtk *= 2;
-                if(card.isCriticalNext) dAtk *= 2;
-                totalAtk += dAtk; 
+                const strike = calcAttackerStrike(card, currentTurn);
+                totalAtk += strike.atk;
             });
             const kakujiIndex = targetField.findIndex(card => (card.id === 3 || card.isGuardian) && card.kenonTurns === 0);
             let logMsg = `【${currentTurn==='A'?myName:enemyName}】が ${attackerNames.join(' と ')} で ${targetMode==='self'?'自分自身に':'相手プレイヤーに'}ダイレクトアタック！`;
@@ -2892,8 +3346,16 @@
             } else {
                 let hpBoxIdStr = targetPlayerStr === 'A' ? 'hp-box-self' : 'hp-box-enemy'; 
                 spawnEffectAtElement(hpBoxIdStr, 'slash', 0); spawnEffectAtElement(hpBoxIdStr, 'explode', 200); 
-                if (targetMode === 'enemy') { if (currentTurn === 'A') hpB -= totalAtk; else hpA -= totalAtk; } 
-                else { if (currentTurn === 'A') hpA -= totalAtk; else hpB -= totalAtk; }
+                let hpLog = { msg: '' };
+                if (targetMode === 'enemy') {
+                    if (currentTurn === 'A') { hpB -= totalAtk; }
+                    else dealPlayerHpDamage('A', totalAtk, hpLog);
+                } else {
+                    if (currentTurn === 'A') dealPlayerHpDamage('A', totalAtk, hpLog);
+                    else hpB -= totalAtk;
+                }
+                logMsg += hpLog.msg;
+                logMsg += applySkillDrainHeal(currentTurn === 'A' && targetMode === 'enemy' ? totalAtk : 0);
                 if (isAiMode && aiDifficulty === 'george' && targetMode === 'enemy' && currentTurn === 'A') {
                     attackers.forEach(card => { if (card.id !== 11) card.hanseibunTurns = 99; });
                     logMsg += `\n📄 ジョージ級！直接攻撃したあなたの先生全員に反省文99ターン！`;
@@ -2991,11 +3453,6 @@
             }
 
             myField.forEach(card => {
-                if (card.id === 8 && enemyField.length > 0) {
-                    if (!isTeacherAbilityBlocked(currentTurn, card)) {
-                        if (!isHokenshitsuActive()) { let t = enemyField.filter(c => c.type === 'teacher' && c.videoTurns === 0 && c.hanseibunTurns === 0 && !c.isPetrified && !c.inLab && c.kenonTurns === 0); if (t.length > 0) { let target = t[Math.floor(Math.random() * t.length)]; target.videoTurns = 1; endTurnMsg += `\n[三谷]の効果！相手の[${target.name}]は動画に夢中！`; } }
-                    } else notifySidwellBlock(currentTurn, card);
-                }
                 if (card.id === 19) {
                     if (!isTeacherAbilityBlocked(currentTurn, card)) {
                         let added = false;
@@ -3014,12 +3471,20 @@
                 }
             });
 
+            endTurnMsg += triggerMitaniEffects();
+            endTurnMsg += applySkillWanderAtTurnEnd();
+
             enemyField.forEach(card => { if(card.type === 'teacher') card.canAttack = (card.hanseibunTurns === 0 && card.videoTurns === 0 && card.sleepTurns === 0 && card.pechankoTurns === 0 && !card.isPetrified && !card.inLab && card.kenonTurns === 0 && !card.isSmoking && card.smokeTicket === 0); });
 
             currentTurn = (currentTurn === 'A') ? 'B' : 'A';
             resetTurnActionCounters();
             bonusTeacherSummonsA = 0; bonusTeacherSummonsB = 0;
             attackingCardIndexes = []; drawHand(currentTurn);
+
+            if (currentTurn === 'A') {
+                playerTurnCount++;
+                endTurnMsg += applySkillTurnStartForPlayer();
+            }
 
             if (isGarbageStationActive()) {
                 let dA = discardRandomHandCard(handA, 'A');
@@ -3037,6 +3502,7 @@
                 if (card.kenonTurns > 0) card.kenonTurns--;
                 if (card.freezeTurns > 0) card.freezeTurns--;
                 if (card.bindTurns > 0) card.bindTurns--;
+                if (card.invincibleTurns > 0) card.invincibleTurns--;
             });
 
             const kenonToResolve = nextActiveField.filter(c => c.pendingSummonAfterKenon && c.kenonTurns === 0);
@@ -3071,6 +3537,13 @@
             });
             
             addLog(endTurnMsg); updateScreen(); checkGameOver();
+            const needSkillPick = isSkillSystemEnabled() && currentTurn === 'A' && playerTurnCount >= 3 && playerTurnCount % 3 === 0 && hpA > 0 && hpB > 0;
+            if (needSkillPick) {
+                beginSkillPickPhase(() => {
+                    if (isAiMode && currentTurn === 'B' && hpA > 0 && hpB > 0 && !aiProcessing) setTimeout(processAiTurn, 1000);
+                });
+                return;
+            }
             if (isAiMode && currentTurn === 'B' && hpA > 0 && hpB > 0 && !aiProcessing) { setTimeout(processAiTurn, 1000); }
         }
 
@@ -3111,6 +3584,7 @@
         window.updateAiDifficultyDesc = updateAiDifficultyDesc;
 
         loadSoundSetting();
+        loadSkillSetting();
         updateAiDifficultyDesc();
     </script>
 </body>
