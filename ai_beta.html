@@ -91,14 +91,13 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">🧪 ベータ版 Ver 31.25</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">🧪 ベータ版 Ver 31.26</span></h1>
         <div class="patch-notes">
-            <strong>📋 変更履歴（Ver 31.25）</strong><br>
-            ・🔄 安定版と同仕様に統一（テストモード撤回）<br>
-            ・🔄 スキル選択が3ターンごとに無限に続くよう修正<br>
-            ・🧊 英語の浅原２：味方の通常攻撃が氷属性（凍結付与）に<br>
-            ・⚔️ AI難易度強化（かくじぃDEF2倍・薄井ATK3倍・ジョージHP2倍・長峰HP10倍/即死/直撃優先）<br>
-            ・🎚️ <b>Ver 31.24</b>：テストモード（毎ターン・ドラフト）
+            <strong>📋 変更履歴（Ver 31.26）</strong><br>
+            ・🎲 スキル排出率を全ターン固定（★1 35% / ★2 30% / ★3 20% / ★4 10% / ★5 5%）<br>
+            ・❤️ 初期HPに50000・100000を追加<br>
+            ・🤖 新難易度：おがぢ級・しげよし級・シドウェル級<br>
+            ・🎚️ <b>Ver 31.25</b>：安定版と同仕様に統一
         </div>
 
         <div class="win-counter">🏆 現在の戦績: あなた <span id="win-player" style="color:#007bff">0</span> - <span id="win-ai" style="color:#dc3545">0</span> AI</div>
@@ -113,6 +112,8 @@
                 <option value="5000" selected>5000</option>
                 <option value="7500">7500</option>
                 <option value="10000">10000</option>
+                <option value="50000">50000</option>
+                <option value="100000">100000</option>
             </select>
         </label>
         <br>
@@ -122,7 +123,10 @@
                     <option value="weak">弱い</option>
                     <option value="normal" selected>普通</option>
                     <option value="strong">強い</option>
+                    <option value="ogaji">おがぢ級</option>
+                    <option value="shigeyoshi">しげよし級</option>
                     <option value="kakuji">かくじぃ級</option>
+                    <option value="sidwell">シドウェル級</option>
                     <option value="usui">薄井級</option>
                     <option value="george">ジョージ級</option>
                     <option value="nagamine">長峰級</option>
@@ -200,6 +204,7 @@
         let isAiMode = true; 
         let amIHost = true; 
         let aiDifficulty = 'normal';
+        let aiPlayerRevivesLeft = 0;
         let myName = "プレイヤー"; 
         let enemyName = "AI先生"; 
         let maxHp = 5000;
@@ -257,31 +262,11 @@
             if (el) { el.checked = skillEnabled; }
         }
 
-        const SKILL_STAR_RATES = [
-            [80, 15, 4, 0.9, 0.1],
-            [70, 20, 7, 2, 1],
-            [60, 25, 10, 3, 2]
-        ];
-
-        function getSkillStarRates(pickIndex) {
-            if (pickIndex < SKILL_STAR_RATES.length) return SKILL_STAR_RATES[pickIndex];
-            const extra = pickIndex - (SKILL_STAR_RATES.length - 1);
-            let r1 = 60, r2 = 25, r3 = 10, r4 = 3, r5 = 2;
-            for (let i = 0; i < extra; i++) {
-                r1 = Math.max(8, r1 - 4);
-                r2 = Math.max(10, r2 - 3);
-                r3 = Math.min(35, r3 + 2);
-                r4 = Math.min(30, r4 + 3);
-                r5 = Math.min(25, r5 + 2);
-            }
-            const sum = r1 + r2 + r3 + r4 + r5;
-            return [r1, r2, r3, r4, r5].map(v => v * 100 / sum);
-        }
+        const SKILL_STAR_RATES = [35, 30, 20, 10, 5];
 
         function rollSkillStar() {
-            const rates = getSkillStarRates(skillPickIndex);
             let r = Math.random() * 100, acc = 0;
-            for (let i = 0; i < 5; i++) { acc += rates[i]; if (r < acc) return i + 1; }
+            for (let i = 0; i < 5; i++) { acc += SKILL_STAR_RATES[i]; if (r < acc) return i + 1; }
             return 5;
         }
 
@@ -304,7 +289,7 @@
             reg(1, true, '永久 味方DEF+10%', '味方ティーチャーの防御力+10%（累積）', () => { ps().allyDfnPct += 10; return '永久：味方DEF+10%'; });
             reg(1, false, 'HP+10%回復', '自分のHPを最大HPの10%回復（上限突破可）', () => skillHealPlayer(0.1, 'HP+10%回復'));
             reg(1, false, '敵HP-10%', '敵プレイヤーの体力-10%', () => { hpB = Math.max(0, hpB - Math.floor(getPlayerMaxHp('B') * 0.1)); return '敵HP-10%'; });
-            reg(1, false, '手札に長峰', '手札に長峰を1枚加える', () => { const c = initCardState(cardById(1)); pushCardToHand(handA, c, 'A') || sendToGraveyard(c, 'A'); return '手札に長峰追加'; });
+            reg(1, false, '手札に長峰', '手札に長峰を1枚加える', () => { const c = initCardState(cardById(1)); pushCardToHand(handA, c, 'A'); return '手札に長峰追加'; });
             reg(1, true, '永久 早くしろ+5', '早くしろボタン上限+5（累積）', () => { ps().hurryBonus += 5; return '永久：早くしろ+5'; });
             reg(1, false, '敵プレイヤーにランダム状態異常', '敵プレイヤーにランダムな状態異常（毒・やけど等）', () => applyRandomStatusToEnemyPlayer());
             reg(1, true, '永久 被ダメ-1%', '被ダメージ-1%（累積・最大90%）', () => { ps().dmgReducePct = Math.min(90, ps().dmgReducePct + 1); return '永久：被ダメ-1%'; });
@@ -1100,7 +1085,10 @@
         function isHandLanObscured(player) { return (player === 'A' && lanTurnsA > 0) || (player === 'B' && lanTurnsB > 0); }
 
         function isNagamineMode() { return aiDifficulty === 'nagamine'; }
-        function isAiStrongTierDifficulty() { return ['strong', 'kakuji', 'usui', 'george'].includes(aiDifficulty); }
+        function isOgajiMode() { return aiDifficulty === 'ogaji'; }
+        function isShigeyoshiMode() { return aiDifficulty === 'shigeyoshi'; }
+        function isSidwellDifficultyMode() { return aiDifficulty === 'sidwell'; }
+        function isAiStrongTierDifficulty() { return ['strong', 'ogaji', 'shigeyoshi', 'kakuji', 'sidwell', 'usui', 'george'].includes(aiDifficulty); }
 
         function applyAiTeacherDifficultyBonus(card) {
             if (!isAiMode || !fieldB.includes(card) || card.type !== 'teacher') return;
@@ -1110,6 +1098,7 @@
             }
             if (aiDifficulty === 'usui' && !card.usuiDoubled) { card.atk *= 3; card.usuiDoubled = true; }
             if (aiDifficulty === 'george' && card.id === 5 && !card.georgeHpDoubled) { card.dfn *= 2; card.georgeHpDoubled = true; }
+            if (aiDifficulty === 'shigeyoshi' && card.revivesLeft < 3) card.revivesLeft = 3;
         }
 
         function getPlayerMaxHp(player) {
@@ -1137,6 +1126,31 @@
             if (!isIceAttributeAttackActive(attackerField)) return logMsgRef;
             defender.freezeTurns = Math.max(defender.freezeTurns, 1);
             return logMsgRef + `\n🧊 氷属性攻撃！[${defender.name}]を凍結！`;
+        }
+
+        function triggerOgajiDifficultyPhilosophy() {
+            const victims = [];
+            for (let i = fieldA.length - 1; i >= 0; i--) {
+                const c = fieldA[i];
+                if (c.type === 'teacher' && !c.inLab && c.kenonTurns === 0) victims.push(fieldA.splice(i, 1)[0]);
+            }
+            if (!victims.length) return;
+            sendCardCutin(cardById(4));
+            victims.forEach(card => {
+                philosophySpace.push({ card, originalPlayer: 'A', remainingTurns: 2, ogajiDifficultyEvent: true, noReturn: Math.random() < 0.5 });
+            });
+            addLog(`📖 おがぢ級の哲学対話！${victims.length}人の先生が連れ去られた！`);
+            updateScreen();
+        }
+
+        function tryShigeyoshiAiPlayerRevive() {
+            if (hpB <= 0 && isShigeyoshiMode() && aiPlayerRevivesLeft > 0) {
+                aiPlayerRevivesLeft--;
+                hpB = getPlayerMaxHp('B');
+                addLog(`💪 しげよし級：AIプレイヤーが再再再試で耐えた！（残り${aiPlayerRevivesLeft}回）`);
+                return true;
+            }
+            return false;
         }
 
         function getHandConfig(player) {
@@ -1193,11 +1207,15 @@
             return teachersPlayedThisTurn < getTeacherPlayLimit(currentTurn);
         }
 
+        function countHandCards(hand) {
+            return hand.filter(c => c).length;
+        }
+
         function pushCardToHand(hand, card, ownerPlayer) {
-            let slot = hand.findIndex(c => !c);
+            const slot = hand.findIndex(c => !c);
             if (slot !== -1) { hand[slot] = card; return true; }
-            if (card.id !== 501 && card.id !== 502) sendToGraveyard(card, ownerPlayer);
-            return false;
+            hand.push(card);
+            return true;
         }
 
         function discardRandomHandCard(hand, ownerPlayer) {
@@ -1255,6 +1273,7 @@
         }
 
         function isTeacherAbilityBlocked(targetPlayer, card) {
+            if (isSidwellDifficultyMode() && targetPlayer === 'A') return true;
             return isLibraryActive() || isAbilityBlocked(targetPlayer, card);
         }
 
@@ -1301,7 +1320,7 @@
             myName = document.getElementById('player-name-input').value.trim() || "プレイヤー";
             maxHp = parseInt(document.getElementById('hp-select').value) || 5000;
             aiDifficulty = document.getElementById('ai-difficulty').value;
-            const diffLabels = { weak: '弱い', normal: '普通', strong: '強い', kakuji: 'かくじぃ級', usui: '薄井級', george: 'ジョージ級', nagamine: '長峰級' };
+            const diffLabels = { weak: '弱い', normal: '普通', strong: '強い', ogaji: 'おがぢ級', shigeyoshi: 'しげよし級', kakuji: 'かくじぃ級', sidwell: 'シドウェル級', usui: '薄井級', george: 'ジョージ級', nagamine: '長峰級' };
             enemyName = `AI先生 (${diffLabels[aiDifficulty] || '普通'})`;
             
             document.getElementById('setup-screen').style.display = 'none';
@@ -1323,7 +1342,7 @@
             selectionMode = null; selectedCardIndex = null; readyToPlayIndex = null; hurryCount = 0; hasCheckedSenriganThisTurn = false;
             sakuraTurnsA = 0; sakuraTurnsB = 0; whiteboardTurnsA = 0; whiteboardTurnsB = 0; lanTurnsA = 0; lanTurnsB = 0;
             bonusTeacherSummonsA = 0; bonusTeacherSummonsB = 0; smokingNextTicket = 1; smokingCurrentCall = 1;
-            hurryBonusA = 0; hurryBonusB = 0; aiProcessing = false;
+            hurryBonusA = 0; hurryBonusB = 0; aiProcessing = false; aiPlayerRevivesLeft = isShigeyoshiMode() ? 3 : 0;
             cutinQueue = []; cutinPlaying = false;
 
             poolsA = { teacher: new BagPool('teacher'), spell: new BagPool('spell'), weapon: new BagPool('weapon'), building: new BagPool('building') };
@@ -1482,6 +1501,8 @@
             }
             aiProcessing = true;
 
+            if (isOgajiMode() && Math.random() < 0.5) triggerOgajiDifficultyPhilosophy();
+
             aiTurnSession++;
             const session = aiTurnSession;
             resetAiTurnGuards();
@@ -1510,9 +1531,8 @@
                     }
                     if (giftIdx !== -1) {
                         let gift = handB[giftIdx]; handB[giftIdx] = null;
-                        let emptyIdx = handA.findIndex(c => !c);
-                        if (emptyIdx !== -1) { handA[emptyIdx] = gift; addLog(`【敵】から [${gift.name}] がプレゼントされた！`); }
-                        else { sendToGraveyard(gift, 'B'); addLog(`【敵】から [${gift.name}] をプレゼントされそうになったが、手札がいっぱいで破棄された！`); }
+                        pushCardToHand(handA, gift, 'A');
+                        addLog(`【敵】から [${gift.name}] がプレゼントされた！`);
                         selectionMode = null;
                     } else { selectionMode = null; }
                     if (aiFinishAction('present')) break; updateScreen(); continue;
@@ -1925,6 +1945,8 @@
             const { size, slotTypes } = getHandConfig(player);
             while (hand.length < size) hand.push(null);
 
+            if (countHandCards(hand) >= size) return;
+
             for (let i = 0; i < size; i++) {
                 if (!hand[i]) {
                     let targetType = slotTypes[i];
@@ -2178,12 +2200,8 @@
                         if(!isMyTurn() || card.id === 502) return;
                         playUserClickSound();
                         let gift = currentHand[idx]; currentHand[idx] = null;
-                        let emptyIdx = handB.findIndex(c => !c);
-                        if (emptyIdx !== -1) { handB[emptyIdx] = gift; addLog(`【自分】は [${gift.name}] を相手にプレゼントした！`); } 
-                        else { 
-                            if(gift.id !== 501) sendToGraveyard(gift, 'A'); 
-                            addLog(`【自分】は [${gift.name}] をプレゼントしようとしたが、相手の手札がいっぱいで破棄された！`); 
-                        }
+                        pushCardToHand(handB, gift, 'B');
+                        addLog(`【自分】は [${gift.name}] を相手にプレゼントした！`);
                         selectionMode = null; document.getElementById('guidance-message').innerText = ""; updateScreen();
                     };
                     handDiv.appendChild(cardEl);
@@ -2864,16 +2882,17 @@
                 if (card.id === 12) { let teachers = enemyField.filter(c => c.type === 'teacher' && !c.inLab && c.kenonTurns === 0); if (teachers.length > 0) { const t = teachers[Math.floor(Math.random() * teachers.length)]; t.atk = 74; t.dfn = 74; logMsg += `\n[${t.name}]のステータスを「74」にした！`; } }
                 if (card.id === 13) {
                     let returnedCount = 0;
+                    const enemyHandRef = currentTurn === 'A' ? handB : handA;
+                    const enemyPlayer = currentTurn === 'A' ? 'B' : 'A';
                     for (let i = enemyField.length - 1; i >= 0; i--) { 
                         if (enemyField[i].type === 'teacher' && enemyField[i].rarity <= 4 && !enemyField[i].inLab && enemyField[i].kenonTurns === 0) { 
                             let rc = enemyField.splice(i, 1)[0]; rc = initCardState(rc);
                             if (rc.id === 7) rc.revivesLeft = 3; 
-                            let enemyHandRef = currentTurn==='A'?handB:handA; let emptySlots = [3, 4, 5].filter(slot => !enemyHandRef[slot]);
-                            if (emptySlots.length > 0) { enemyHandRef[emptySlots[0]] = rc; } else { spawnDeathEffect(`field-card-${currentTurn==='A'?'B':'A'}-${i}`); sendToGraveyard(rc, currentTurn==='A'?'B':'A'); }
+                            pushCardToHand(enemyHandRef, rc, enemyPlayer);
                             returnedCount++;
                         } 
                     }
-                    logMsg += `\n相手の星4以下の先生（${returnedCount}人）を手札に戻した！（上限超過分は破壊）`;
+                    logMsg += `\n相手の星4以下の先生（${returnedCount}人）を手札に戻した！`;
                 }
                 if (card.id === 14) { let stolen = stealRandomEnemyTeacher(enemyField, currentField); if (stolen) logMsg += `\n相手の [${stolen.name}] を奪い取った！`; }
                 if (card.id === 16) {
@@ -2916,9 +2935,8 @@
                             let giftIdx = handB.findIndex((c, i) => c && i !== cardIndex && c.id !== 501 && c.id !== 502);
                             if (giftIdx !== -1) {
                                 let gift = handB[giftIdx]; handB[giftIdx] = null;
-                                let emptyIdx = handA.findIndex(c => !c);
-                                if (emptyIdx !== -1) { handA[emptyIdx] = gift; logMsg += `\n【敵】から [${gift.name}] がプレゼントされた！`; }
-                                else { sendToGraveyard(gift, 'B'); logMsg += `\n【敵】から [${gift.name}] をプレゼントされそうになったが、手札がいっぱいで破棄された！`; }
+                                pushCardToHand(handA, gift, 'A');
+                                logMsg += `\n【敵】から [${gift.name}] がプレゼントされた！`;
                             }
                         }
                         if (isAiMode && currentTurn === 'B' && fieldB.includes(card)) applyAiTeacherDifficultyBonus(card);
@@ -3444,8 +3462,18 @@
         function nextTurn() {
             selectionMode = null; selectedCardIndex = null; document.getElementById('guidance-message').innerText = ""; readyToPlayIndex = null; hurryCount = 0;
             if (philosophySpace.length > 0) {
-                philosophySpace.forEach(item => item.remainingTurns--); const returns = philosophySpace.filter(item => item.remainingTurns === 0); philosophySpace = philosophySpace.filter(item => item.remainingTurns > 0);
-                returns.forEach(item => { const tf = item.originalPlayer === 'A' ? fieldA : fieldB; tf.push(item.card); });
+                philosophySpace.forEach(item => item.remainingTurns--);
+                const returns = philosophySpace.filter(item => item.remainingTurns === 0);
+                philosophySpace = philosophySpace.filter(item => item.remainingTurns > 0);
+                returns.forEach(item => {
+                    if (item.ogajiDifficultyEvent && item.noReturn) {
+                        sendToGraveyard(item.card, item.originalPlayer);
+                        addLog(`💀 [${item.card.name}]は哲学対話から帰れなかった…`);
+                    } else {
+                        const tf = item.originalPlayer === 'A' ? fieldA : fieldB;
+                        tf.push(item.card);
+                    }
+                });
             }
             
             if (wanderSpace.length > 0) {
@@ -3537,11 +3565,10 @@
                 }
                 if (card.id === 24) {
                     if (!isTeacherAbilityBlocked(currentTurn, card)) {
-                        let enemyHandRef = currentTurn==='A'?handB:handA; let emptyIdx = enemyHandRef.findIndex(c => !c);
-                        if (emptyIdx !== -1) {
-                            enemyHandRef[emptyIdx] = { id: 502, type: "spell", name: "通知", atk: "-", dfn: "-", rarity: 1, ability: "呪文カード", cutin: "通知です。", effect: "効果なし。使うと消える。" };
-                            endTurnMsg += `\n[留学交流室長の畑村]の効果！相手に「通知」を送った！`;
-                        }
+                        let enemyHandRef = currentTurn==='A'?handB:handA;
+                        const notify = { id: 502, type: "spell", name: "通知", atk: "-", dfn: "-", rarity: 1, ability: "呪文カード", cutin: "通知です。", effect: "効果なし。使うと消える。" };
+                        pushCardToHand(enemyHandRef, notify, currentTurn==='A'?'B':'A');
+                        endTurnMsg += `\n[留学交流室長の畑村]の効果！相手に「通知」を送った！`;
                     } else notifySidwellBlock(currentTurn, card);
                 }
             });
@@ -3628,6 +3655,7 @@
         }
 
         function checkGameOver() {
+            if (tryShigeyoshiAiPlayerRevive()) { updateScreen(); return; }
             if (hpA <= 0 || hpB <= 0) {
                 let winnerStr = hpA <= 0 && hpB <= 0 ? "引き分け！" : (hpA <= 0 ? `${enemyName} の勝利！` : `${myName} の勝利！`);
                 if (hpB <= 0 && hpA > 0) playerWins++;
@@ -3654,7 +3682,10 @@
                 weak: '手札の順番通りにぎこちなくプレイします。',
                 normal: '状況に応じて呪文・先生・武器を使い分けます。',
                 strong: '有利な交換と致命の一撃を狙う上級AIです。',
+                ogaji: 'AIターン50%でプレイヤー側の先生を哲学対話に連れ去る。50%が帰還不能（死亡）。',
+                shigeyoshi: 'AIの先生全員＋AIプレイヤーが「再再再試」（致命傷3回まで耐える）。',
                 kakuji: 'AIが出す先生は全員「守護」＋防御力2倍になります。',
+                sidwell: 'プレイヤー側のティーチャーのアビリティが発動しません。',
                 usui: 'AIが出す先生の攻撃力が3倍になります。',
                 george: 'あなたの先生が相手プレイヤーへ直接攻撃すると反省文99T。AIのジョージの体力が2倍。',
                 nagamine: '手札2倍・HP10倍・出牌2倍/ターン・毎ターン即死1体・プレイヤー直撃優先＋最強AI。'
