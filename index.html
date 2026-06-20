@@ -122,12 +122,11 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">オンライン版 Ver 31.35</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">オンライン版 Ver 31.36</span></h1>
         <div class="patch-notes">
-            <strong>📋 変更履歴（Ver 31.35）</strong><br>
-            ・🐛 部屋作成ができない不具合を修正（通信コードの文字化けによるJSエラー）<br>
-            ・🌐 AI安定版 Ver 3.17 と同期（プレゼンキュー・売店刷新・魅了・攻撃演出など）<br>
-            ・🃏 新カード：サクラエディタ(129)・教室の机(214)・教室の椅子(215)
+            <strong>📋 変更履歴（Ver 31.36）</strong><br>
+            ・🐛 効果音・プレゼンキュー処理の欠落を修正（接続時エラー解消）<br>
+            ・🐛 部屋作成ができない不具合を修正（通信コードの文字化けによるJSエラー）
         </div>
         <div class="win-counter">🏆 現在の戦績: あなた <span id="win-player" style="color:#007bff">0</span> - <span id="win-enemy" style="color:#dc3545">0</span> 相手</div>
         <input type="text" id="player-name-input" class="name-input" placeholder="あなたの名前を入力" value="ゲスト">
@@ -601,6 +600,238 @@
                 enqueuePresentation(steps);
             });
             return msg;
+        }
+
+        const CUTIN_DURATION = 2000;
+        const SPELL_DISPLAY_DURATION = 1000;
+        let presentationQueue = [];
+        let presentationBusy = false;
+        let abilityHighlight = null;
+        let presentationIdleCallback = null;
+        let cutinQueue = presentationQueue;
+        let cutinPlaying = false;
+        let soundEnabled = localStorage.getItem('tcgSoundOn') !== 'false';
+        let audioCtx = null;
+
+        function ensureAudioCtx() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            return audioCtx;
+        }
+
+        function playSynthSound(preset) {
+            if (!soundEnabled) return;
+            try {
+                const ctx = ensureAudioCtx();
+                const now = ctx.currentTime;
+                if (preset === 'harisen') {
+                    const dur = 0.07;
+                    const bufLen = Math.floor(ctx.sampleRate * dur);
+                    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+                    const ch = buf.getChannelData(0);
+                    for (let i = 0; i < bufLen; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufLen, 0.4);
+                    const noise = ctx.createBufferSource();
+                    noise.buffer = buf;
+                    const bpf = ctx.createBiquadFilter();
+                    bpf.type = 'bandpass';
+                    bpf.frequency.value = 2800;
+                    bpf.Q.value = 1.5;
+                    const ng = ctx.createGain();
+                    ng.gain.setValueAtTime(0.5, now);
+                    ng.gain.exponentialRampToValueAtTime(0.001, now + dur);
+                    noise.connect(bpf);
+                    bpf.connect(ng);
+                    ng.connect(ctx.destination);
+                    noise.start(now);
+                    noise.stop(now + dur);
+                    const snap = ctx.createOscillator();
+                    snap.type = 'square';
+                    snap.frequency.setValueAtTime(2200, now);
+                    snap.frequency.exponentialRampToValueAtTime(350, now + 0.045);
+                    const sg = ctx.createGain();
+                    sg.gain.setValueAtTime(0.12, now);
+                    sg.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    snap.connect(sg);
+                    sg.connect(ctx.destination);
+                    snap.start(now);
+                    snap.stop(now + 0.05);
+                } else if (preset === 'swordDraw') {
+                    const dur = 0.38;
+                    const bufLen = Math.floor(ctx.sampleRate * dur);
+                    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+                    const ch = buf.getChannelData(0);
+                    for (let i = 0; i < bufLen; i++) {
+                        const p = i / bufLen;
+                        ch[i] = (Math.random() * 2 - 1) * (0.4 + p * 0.6) * (1 - p * 0.2);
+                    }
+                    const noise = ctx.createBufferSource();
+                    noise.buffer = buf;
+                    const hp = ctx.createBiquadFilter();
+                    hp.type = 'highpass';
+                    hp.frequency.setValueAtTime(600, now);
+                    hp.frequency.linearRampToValueAtTime(5000, now + 0.28);
+                    const ng = ctx.createGain();
+                    ng.gain.setValueAtTime(0.12, now);
+                    ng.gain.exponentialRampToValueAtTime(0.001, now + dur);
+                    noise.connect(hp);
+                    hp.connect(ng);
+                    ng.connect(ctx.destination);
+                    noise.start(now);
+                    noise.stop(now + dur);
+                    const ring = ctx.createOscillator();
+                    ring.type = 'triangle';
+                    ring.frequency.setValueAtTime(150, now + 0.04);
+                    ring.frequency.exponentialRampToValueAtTime(1400, now + 0.22);
+                    const rg = ctx.createGain();
+                    rg.gain.setValueAtTime(0.14, now + 0.04);
+                    rg.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+                    ring.connect(rg);
+                    rg.connect(ctx.destination);
+                    ring.start(now + 0.04);
+                    ring.stop(now + 0.38);
+                } else if (preset === 'butsudan') {
+                    [523, 659, 784, 1047].forEach((freq, i) => {
+                        const osc = ctx.createOscillator();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now);
+                        const g = ctx.createGain();
+                        g.gain.setValueAtTime(0.16 / (i + 1), now);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + 2.0 - i * 0.15);
+                        osc.connect(g);
+                        g.connect(ctx.destination);
+                        osc.start(now);
+                        osc.stop(now + 2.0);
+                    });
+                } else if (preset === 'click') {
+                    const osc = ctx.createOscillator();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(1400, now);
+                    osc.frequency.exponentialRampToValueAtTime(700, now + 0.025);
+                    const g = ctx.createGain();
+                    g.gain.setValueAtTime(0.07, now);
+                    g.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+                    osc.connect(g);
+                    g.connect(ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.035);
+                } else if (preset === 'hurry') {
+                    [880, 660, 440].forEach((freq, i) => {
+                        const osc = ctx.createOscillator();
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(freq, now + i * 0.06);
+                        const g = ctx.createGain();
+                        g.gain.setValueAtTime(0.18, now + i * 0.06);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.06 + 0.12);
+                        osc.connect(g);
+                        g.connect(ctx.destination);
+                        osc.start(now + i * 0.06);
+                        osc.stop(now + i * 0.06 + 0.12);
+                    });
+                } else if (preset === 'victory') {
+                    [523, 659, 784, 1047, 1319].forEach((freq, i) => {
+                        const osc = ctx.createOscillator();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + i * 0.1);
+                        const g = ctx.createGain();
+                        g.gain.setValueAtTime(0.2, now + i * 0.1);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.35);
+                        osc.connect(g);
+                        g.connect(ctx.destination);
+                        osc.start(now + i * 0.1);
+                        osc.stop(now + i * 0.1 + 0.35);
+                    });
+                } else if (preset === 'defeat') {
+                    [392, 349, 311, 262].forEach((freq, i) => {
+                        const osc = ctx.createOscillator();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now + i * 0.15);
+                        const g = ctx.createGain();
+                        g.gain.setValueAtTime(0.22, now + i * 0.15);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.5);
+                        osc.connect(g);
+                        g.connect(ctx.destination);
+                        osc.start(now + i * 0.15);
+                        osc.stop(now + i * 0.15 + 0.5);
+                    });
+                }
+            } catch (e) {}
+        }
+
+        function playUserClickSound() {
+            if (soundEnabled && isMyTurn()) playSynthSound('click');
+        }
+
+        function loadSoundSetting() {
+            const chk = document.getElementById('sound-enabled-check');
+            if (chk) chk.checked = soundEnabled;
+        }
+
+        window.syncSoundSetting = function() {
+            const chk = document.getElementById('sound-enabled-check');
+            soundEnabled = chk ? chk.checked : true;
+            localStorage.setItem('tcgSoundOn', soundEnabled);
+            if (soundEnabled) {
+                ensureAudioCtx();
+                playSynthSound('click');
+            }
+        };
+
+        function setAbilityHighlight(player, index) {
+            abilityHighlight = (player != null && index >= 0) ? { player, index } : null;
+            updateScreen();
+        }
+
+        function clearAbilityHighlight() {
+            abilityHighlight = null;
+            updateScreen();
+        }
+
+        function whenPresentationIdle(fn) {
+            if (!presentationBusy && presentationQueue.length === 0) fn();
+            else presentationIdleCallback = fn;
+        }
+
+        function drainPresentationQueue() {
+            if (presentationQueue.length === 0) {
+                presentationBusy = false;
+                cutinPlaying = false;
+                if (presentationIdleCallback) {
+                    const cb = presentationIdleCallback;
+                    presentationIdleCallback = null;
+                    cb();
+                }
+                return;
+            }
+            presentationBusy = true;
+            cutinPlaying = true;
+            const step = presentationQueue.shift();
+            if (step.type === 'highlight') {
+                setAbilityHighlight(step.player, step.index);
+                drainPresentationQueue();
+            } else if (step.type === 'clearHighlight') {
+                clearAbilityHighlight();
+                drainPresentationQueue();
+            } else if (step.type === 'cutin') {
+                playCutinVisual(step.card || step, drainPresentationQueue, { embedSpell: !!step.embedSpell });
+            } else if (step.type === 'spellDisplay') {
+                showSpellCenterVisual(step.card, step.duration || SPELL_DISPLAY_DURATION, drainPresentationQueue);
+            } else if (step.type === 'parallel') {
+                let remaining = step.steps.length;
+                const onParallelDone = () => { if (--remaining <= 0) drainPresentationQueue(); };
+                step.steps.forEach(s => {
+                    if (s.type === 'cutin') playCutinVisual(s.card, onParallelDone, { embedSpell: !!s.embedSpell });
+                    else if (s.type === 'spellDisplay') showSpellCenterVisual(s.card, s.duration || SPELL_DISPLAY_DURATION, onParallelDone);
+                    else if (s.type === 'action') { s.fn(); onParallelDone(); }
+                    else onParallelDone();
+                });
+            } else if (step.type === 'action') {
+                step.fn();
+                drainPresentationQueue();
+            } else if (step.type === 'wait') {
+                setTimeout(drainPresentationQueue, step.ms || 0);
+            } else {
+                drainPresentationQueue();
+            }
         }
 
         function enqueuePresentation(steps) {
