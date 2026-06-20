@@ -122,11 +122,11 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">オンライン版 Ver 31.37</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">オンライン版 Ver 31.38</span></h1>
         <div class="patch-notes">
-            <strong>📋 変更履歴（Ver 31.37）</strong><br>
-            ・✨ 対人戦で両プレイヤーがスキルを獲得できるよう修正<br>
-            ・🔄 決着後にホームへ戻った際、接続中のまま固まる不具合を修正
+            <strong>📋 変更履歴（Ver 31.38）</strong><br>
+            ・🐛 ターン終了後に状態が同期されず、両者「早くしろ」になる不具合を修正<br>
+            ・🃏 ゲーム開始時の初期ドローがゲスト側に届かない不具合を修正
         </div>
         <div class="win-counter">🏆 現在の戦績: あなた <span id="win-player" style="color:#007bff">0</span> - <span id="win-enemy" style="color:#dc3545">0</span> 相手</div>
         <input type="text" id="player-name-input" class="name-input" placeholder="あなたの名前を入力" value="ゲスト">
@@ -1010,7 +1010,7 @@
         function enemyFieldRef() { return amIHost ? fieldB : fieldA; }
 
         function syncState(logText = "", popupText = "") {
-            if (isMyTurn() && conn && conn.open) sendState(logText, popupText);
+            if (conn && conn.open) sendState(logText, popupText);
         }
 
         function broadcastRemoteCutin(card) {
@@ -1121,6 +1121,8 @@
             document.getElementById('game-screen').style.display = 'block';
             if (soundEnabled) ensureAudioCtx();
             addLog('通信が確立しました！');
+            if (conn._mpReady) return;
+            conn._mpReady = true;
             conn.on('data', (data) => {
                 if (data.type === 'hello') {
                     enemyName = data.playerName;
@@ -1130,7 +1132,6 @@
                         let firstPlayer = (currentTurn === 'A') ? myName : enemyName;
                         let msg = `🎲 【${firstPlayer}】の先攻でスタート！(HP: ${maxHp})`;
                         addLog(msg);
-                        sendState(msg);
                         updateScreen();
                     }
                     return;
@@ -1147,12 +1148,23 @@
                 }
                 if (data.type === 'initGame') {
                     maxHp = data.maxHp || maxHp;
-                    hpA = data.hpA; hpB = data.hpB; fieldA = data.fieldA; fieldB = data.fieldB;
-                    handA = data.handA; handB = data.handB; currentTurn = data.currentTurn;
+                    hpA = data.hpA; hpB = data.hpB;
+                    fieldA = data.fieldA || []; fieldB = data.fieldB || [];
+                    handA = data.handA || []; handB = data.handB || [];
+                    currentTurn = data.currentTurn;
                     buildingStack = data.buildingStack || [];
+                    playerSkillStateA = data.playerSkillStateA || createEmptyPlayerSkillState();
+                    playerSkillStateB = data.playerSkillStateB || createEmptyPlayerSkillState();
+                    skillPickIndexA = data.skillPickIndexA || 0;
+                    skillPickIndexB = data.skillPickIndexB || 0;
+                    turnsSinceLastSkillDraftA = data.turnsSinceLastSkillDraftA || 0;
+                    turnsSinceLastSkillDraftB = data.turnsSinceLastSkillDraftB || 0;
                     if (data.poolsA) poolsA = { teacher: new BagPool('teacher', data.poolsA.teacher.bag), spell: new BagPool('spell', data.poolsA.spell.bag), weapon: new BagPool('weapon', data.poolsA.weapon.bag), building: new BagPool('building', data.poolsA.building.bag) };
                     if (data.poolsB) poolsB = { teacher: new BagPool('teacher', data.poolsB.teacher.bag), spell: new BagPool('spell', data.poolsB.spell.bag), weapon: new BagPool('weapon', data.poolsB.weapon.bag), building: new BagPool('building', data.poolsB.building.bag) };
+                    if (data.logMsg) addLog(data.logMsg);
+                    updatePlayerSkillsBar();
                     updateScreen();
+                    maybeOfferSkillPickFromRemote();
                     return;
                 }
                 applyRemoteState(data);
@@ -1866,7 +1878,13 @@
             updateScreen();
 
             if (conn && conn.open && amIHost) {
-                conn.send({ type: 'initGame', maxHp, hpA, hpB, fieldA, fieldB, handA, handB, currentTurn, buildingStack, poolsA, poolsB });
+                let firstPlayer = (currentTurn === 'A') ? myName : enemyName;
+                let msg = `🎲 【${firstPlayer}】の先攻でスタート！(HP: ${maxHp})`;
+                conn.send({
+                    type: 'initGame', maxHp, hpA, hpB, fieldA, fieldB, handA, handB, currentTurn, buildingStack, poolsA, poolsB,
+                    playerSkillStateA, playerSkillStateB, skillPickIndexA, skillPickIndexB,
+                    turnsSinceLastSkillDraftA, turnsSinceLastSkillDraftB, logMsg: msg
+                });
             }
         }
 
@@ -2192,7 +2210,7 @@
             const handLanHidden = isHandLanObscured(myPlayerId());
 
             trimPlayerHand(myHand, myPlayerId());
-            const handSize = getHandConfig('A').size;
+            const handSize = getHandConfig(myPlayerId()).size;
             const handRenderCount = Math.max(handSize, myHand.length);
             for (let idx = 0; idx < handRenderCount; idx++) {
                 const card = myHand[idx];
