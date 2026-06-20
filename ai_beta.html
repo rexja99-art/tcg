@@ -28,10 +28,8 @@
         .card .card-atk { color: #d9534f; } .card .card-dfn { color: #0275d8; }
         .card .card-ability { flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; font-size: 7.5px; color: #222; padding-top: 2px; overflow: hidden; min-height: 0; max-height: 26px; }
         .card:hover .card-ability { max-height: none; overflow: visible; }
-        .card .card-status-compact { font-size: 7px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
-        .card .card-status-full { display: none; text-align: center; width: 100%; }
-        .card:hover .card-status-compact { display: none; }
-        .card:hover .card-status-full { display: block; }
+        .card .card-status-compact { font-size: 7px; line-height: 1.2; white-space: normal; overflow: visible; width: 100%; text-align: center; }
+        .card .card-status-full { display: none; }
         .card .card-effect-detail { display: none; font-size: 7.5px; color: #333; background: #fff; border-radius: 3px; padding: 2px; margin-top: 3px; font-weight: normal; text-align: left; width: 100%; box-sizing: border-box; }
         .card:hover .card-effect-detail { display: block; }
         .card.selected-attacker { border: 3px solid #28a745 !important; box-shadow: 0 0 10px #28a745; transform: translateY(-5px); }
@@ -94,10 +92,10 @@
         .skill-pick-desc { font-size: 10px; color: #555; line-height: 1.35; }
         #player-skills-bar { font-size: 10px; color: #444; background: #fff8e1; border: 1px solid #ffc107; border-radius: 6px; padding: 4px 8px; margin: 4px auto; max-width: 600px; text-align: left; line-height: 1.35; display: none; }
         .cutin-text { font-size: 15px; margin: 0; font-weight: bold; text-shadow: 1px 1px 3px black; line-height: 1.35; padding: 0 12px; }
-        .cutin-spell-embed { display: inline-block; margin: 8px auto 4px; width: 200px; min-height: 90px; background: linear-gradient(145deg, #f3e5ff 0%, #e2d5f7 100%); border: 3px solid #ffc107; border-radius: 8px; padding: 8px; text-align: left; box-shadow: 0 6px 20px rgba(0,0,0,0.45); animation: spellPop 0.35s ease-out; }
-        .cutin-spell-embed .cutin-spell-type { font-size: 9px; color: #ddd; margin-bottom: 2px; }
-        .cutin-spell-embed .cutin-spell-title { font-size: 13px; color: #fff; font-weight: 900; margin-bottom: 4px; text-shadow: 1px 1px 2px #000; }
-        .cutin-spell-embed .cutin-spell-effect { font-size: 9px; color: #f8f9fa; line-height: 1.3; }
+        .cutin-spell-embed { display: inline-block; margin: 8px auto 4px; width: 200px; min-height: 90px; background: rgba(111, 66, 193, 0.82); border: 3px solid #ffc107; border-radius: 8px; padding: 8px; text-align: left; box-shadow: 0 6px 20px rgba(0,0,0,0.45); animation: spellPop 0.35s ease-out; }
+        .cutin-spell-embed .cutin-spell-type { font-size: 9px; color: #e8dcf8; margin-bottom: 2px; text-shadow: 1px 1px 2px #000, -1px -1px 2px #000; }
+        .cutin-spell-embed .cutin-spell-title { font-size: 13px; color: #fff; font-weight: 900; margin-bottom: 4px; text-shadow: 1px 1px 2px #000, -1px -1px 2px #000, 0 0 6px #000; }
+        .cutin-spell-embed .cutin-spell-effect { font-size: 9px; color: #fff; line-height: 1.3; background: rgba(0,0,0,0.35); border-radius: 4px; padding: 3px 5px; text-shadow: 1px 1px 2px #000, -1px -1px 2px #000; }
         .weapon-equip-link { cursor: pointer; text-decoration: underline; pointer-events: auto; }
         .weapon-equip-link:hover { filter: brightness(1.15); }
         #weapon-detail-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 20001; display: flex; justify-content: center; align-items: center; }
@@ -112,15 +110,15 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">🧪 ベータ版 Ver 31.29</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">🧪 ベータ版 Ver 31.30</span></h1>
         <div class="patch-notes">
-            <strong>📋 変更履歴（Ver 31.29）</strong><br>
-            ・📜 呪文カードをカットイン内に表示（被り解消）<br>
-            ・⚔️ 通常攻撃時に攻撃者カードが対象へ突進するアニメーション<br>
-            ・🗡️ 装備名タップで武器カード詳細表示・表示優先度を状態異常＞装備＞アビリティに<br>
-            ・🔴 全体攻撃スキル（トランプ等）のみ赤く光る／常時スキルは効果発動時にカットイン<br>
-            ・🐛 しげよし級AIが1ターン2枚武器を使うバグを修正<br>
-            ・🎚️ <b>Ver 31.28</b>：AI普通フリーズ修正・敗北煽り文・赤光タイミング
+            <strong>📋 変更履歴（Ver 31.30）</strong><br>
+            ・🃏 手札7枚超過時は点線スロット非表示／6枚に戻ったら余分な空き枠を削除<br>
+            ・⚔️ 攻撃中はフィールド上の攻撃者を非表示（クローンのみ表示）<br>
+            ・🏛️🗡️ 建物・武器はカットインと同時に効果発動（呪文・先生スキルは従来通り）<br>
+            ・📋 状態異常を＋表記なしですべて常時表示<br>
+            ・📜 カットイン内呪文テキストの視認性向上（輪郭・半透明背景）<br>
+            ・🎚️ <b>Ver 31.29</b>：呪文カットイン内嵌・攻撃アニメ・装備UI・AI武器バグ修正
         </div>
 
         <div class="win-counter">🏆 現在の戦績: あなた <span id="win-player" style="color:#007bff">0</span> - <span id="win-ai" style="color:#dc3545">0</span> AI</div>
@@ -848,8 +846,9 @@
                 let remaining = step.steps.length;
                 const onParallelDone = () => { if (--remaining <= 0) drainPresentationQueue(); };
                 step.steps.forEach(s => {
-                    if (s.type === 'cutin') playCutinVisual(s.card, onParallelDone);
+                    if (s.type === 'cutin') playCutinVisual(s.card, onParallelDone, { embedSpell: !!s.embedSpell });
                     else if (s.type === 'spellDisplay') showSpellCenterVisual(s.card, s.duration || SPELL_DISPLAY_DURATION, onParallelDone);
+                    else if (s.type === 'action') { s.fn(); onParallelDone(); }
                     else onParallelDone();
                 });
             } else if (step.type === 'action') {
@@ -958,6 +957,16 @@
             enqueuePresentation([
                 { type: 'cutin', card },
                 { type: 'action', fn: onComplete || (() => {}) }
+            ]);
+        }
+
+        function sendInstantCardCutin(card, onComplete) {
+            if (!card) { if (onComplete) onComplete(); return; }
+            enqueuePresentation([
+                { type: 'parallel', steps: [
+                    { type: 'cutin', card },
+                    { type: 'action', fn: onComplete || (() => {}) }
+                ]}
             ]);
         }
 
@@ -1338,6 +1347,11 @@
 
         function countHandCards(hand) {
             return hand.filter(c => c).length;
+        }
+
+        function trimPlayerHand(hand, player) {
+            const { size } = getHandConfig(player);
+            while (hand.length > size && hand[hand.length - 1] == null) hand.pop();
         }
 
         function pushCardToHand(hand, card, ownerPlayer) {
@@ -2331,9 +2345,14 @@
 
             const handLanHidden = isHandLanObscured('A');
 
-            myHand.forEach((card, idx) => {
+            trimPlayerHand(myHand, 'A');
+            const handSize = getHandConfig('A').size;
+            const handRenderCount = Math.max(handSize, myHand.length);
+            for (let idx = 0; idx < handRenderCount; idx++) {
+                const card = myHand[idx];
                 if (!card) {
-                    const emptyEl = document.createElement('div'); emptyEl.className = 'card'; emptyEl.style.background = 'transparent'; emptyEl.style.borderColor = '#ccc'; emptyEl.style.borderStyle = 'dashed'; emptyEl.style.boxShadow = 'none'; emptyEl.style.cursor = 'default'; handDiv.appendChild(emptyEl); return;
+                    if (idx >= handSize) continue;
+                    const emptyEl = document.createElement('div'); emptyEl.className = 'card'; emptyEl.style.background = 'transparent'; emptyEl.style.borderColor = '#ccc'; emptyEl.style.borderStyle = 'dashed'; emptyEl.style.boxShadow = 'none'; emptyEl.style.cursor = 'default'; handDiv.appendChild(emptyEl); continue;
                 }
 
                 if (selectionMode === 'clean') {
@@ -2396,7 +2415,7 @@
                     } else { cardEl.style.opacity = '0.5'; cardEl.style.cursor = 'default'; }
                     handDiv.appendChild(cardEl);
                 }
-            });
+            }
 
             const apDiv = document.getElementById('action-points');
             const teacherLimit = getTeacherPlayLimit('A');
@@ -2502,17 +2521,15 @@
             else if (card.type === 'none') { cardEl.style.background = '#e9ecef'; cardEl.style.borderColor = '#6c757d'; }
 
             const statusDisplay = buildCardStatusLines(card);
-            const compactLine = statusDisplay.compactLine;
-            const moreCount = statusDisplay.moreCount;
-            const compactHtml = compactLine
-                ? `<div class="card-status-compact" style="color:${compactLine.color};">${compactLine.text}${moreCount > 0 ? ` +${moreCount}` : ''}</div>`
-                : `<div class="card-status-compact"></div>`;
-            const fullHtml = statusDisplay.allLines.map(l => {
+            const statusHtml = statusDisplay.allLines.map(l => {
                 if (l.kind === 'equip' && l.weaponId) {
                     return `<div class="weapon-equip-link" data-weapon-id="${l.weaponId}" style="color:${l.color}; font-size:7px; line-height:1.2; cursor:pointer;">${l.text}</div>`;
                 }
                 return `<div style="color:${l.color}; font-size:7px; line-height:1.2;">${l.text}</div>`;
             }).join('');
+            const compactHtml = statusHtml
+                ? `<div class="card-status-compact">${statusHtml}</div>`
+                : `<div class="card-status-compact"></div>`;
 
             const stars = '★'.repeat(card.rarity); let statsHtml = '';
             if (card.type === 'spell') statsHtml = `<span style="color:#6f42c1;">◆呪文</span>`;
@@ -2527,7 +2544,7 @@
             }
 
             let weaponsText = '';
-            cardEl.innerHTML = `<div class="card-header"><div class="card-name">${shownCardName}</div><div class="card-stats">${statsHtml}</div></div><div style="color: #ffaa00; font-size: 8px; text-align: left;">${stars}</div><div class="card-ability">${compactHtml}<div class="card-status-full">${fullHtml}</div><div class="card-effect-detail">${card.effect || ''}</div></div>`;
+            cardEl.innerHTML = `<div class="card-header"><div class="card-name">${shownCardName}</div><div class="card-stats">${statsHtml}</div></div><div style="color: #ffaa00; font-size: 8px; text-align: left;">${stars}</div><div class="card-ability">${compactHtml}<div class="card-effect-detail">${card.effect || ''}</div></div>`;
 
             cardEl.querySelectorAll('.weapon-equip-link').forEach(el => {
                 el.addEventListener('click', (e) => {
@@ -2685,8 +2702,11 @@
             if (!attackerEl || !targetEl) { if (onComplete) onComplete(); return; }
             const aRect = attackerEl.getBoundingClientRect();
             const tRect = targetEl.getBoundingClientRect();
+            const prevVisibility = attackerEl.style.visibility;
+            attackerEl.style.visibility = 'hidden';
             const clone = attackerEl.cloneNode(true);
             clone.classList.add('card-attack-clone');
+            clone.style.visibility = 'visible';
             clone.style.left = aRect.left + 'px';
             clone.style.top = aRect.top + 'px';
             clone.style.width = aRect.width + 'px';
@@ -2694,6 +2714,11 @@
             document.body.appendChild(clone);
             const dx = (tRect.left + tRect.width / 2) - (aRect.left + aRect.width / 2);
             const dy = (tRect.top + tRect.height / 2) - (aRect.top + aRect.height / 2) - 12;
+            const finishAttack = () => {
+                attackerEl.style.visibility = prevVisibility;
+                clone.remove();
+                if (onComplete) onComplete();
+            };
             requestAnimationFrame(() => { clone.style.transform = `translate(${dx}px, ${dy}px) scale(1.12)`; });
             setTimeout(() => {
                 spawnEffectAtElement(targetElId, 'slash', 0);
@@ -2701,7 +2726,7 @@
                 setTimeout(() => {
                     clone.style.transform = 'translate(0, 0) scale(1)';
                     clone.style.opacity = '0';
-                    setTimeout(() => { clone.remove(); if (onComplete) onComplete(); }, 180);
+                    setTimeout(finishAttack, 180);
                 }, 160);
             }, 280);
         }
@@ -2762,7 +2787,7 @@
                 card.owner = currentTurn;
                 if (GUARDIAN_BUILDING_IDS.includes(card.id)) card.isGuardian = true;
                 buildingStack.push(card); currentHand[cardIndex] = null; markBuildingPlayedThisTurn(); readyToPlayIndex = null;
-                sendCardCutin(card, () => {
+                sendInstantCardCutin(card, () => {
                 const finishBuildingSummon = () => {
                 if (card.id === 302) {
                         [...fieldA, ...fieldB].forEach(c => { c.hanseibunTurns=0; c.videoTurns=0; c.silenceTurns=0; c.sleepTurns=0; c.pechankoTurns=0; c.isPetrified=false; c.deathSentenceTurns=-1; c.freezeTurns=0; c.bindTurns=0; });
@@ -3373,7 +3398,7 @@
                 currentHand[weaponIdx] = null;
                 sendToGraveyard(weaponCard, currentTurn);
                 markWeaponPlayedThisTurn();
-                sendTeacherAbilityCutin(weaponCard, currentTurn, targetIndex, () => {
+                sendInstantCardCutin(weaponCard, () => {
                 if (weaponCard.id === 204) { targetTeacher.isLineTracer = true; }
                 else if (weaponCard.id === 205) { targetTeacher.atk += 500; }
                 else if (weaponCard.id === 206) { targetTeacher.isCriticalNext = true; }
