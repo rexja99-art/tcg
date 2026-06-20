@@ -122,11 +122,11 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">オンライン版 Ver 31.34</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">オンライン版 Ver 31.35</span></h1>
         <div class="patch-notes">
-            <strong>📋 変更履歴（Ver 31.34）</strong><br>
+            <strong>📋 変更履歴（Ver 31.35）</strong><br>
+            ・🐛 部屋作成ができない不具合を修正（通信コードの文字化けによるJSエラー）<br>
             ・🌐 AI安定版 Ver 3.17 と同期（プレゼンキュー・売店刷新・魅了・攻撃演出など）<br>
-            ・✨ カットイン同期・手札点線・状態異常1行表示・武器装備演出<br>
             ・🃏 新カード：サクラエディタ(129)・教室の机(214)・教室の椅子(215)
         </div>
         <div class="win-counter">🏆 現在の戦績: あなた <span id="win-player" style="color:#007bff">0</span> - <span id="win-enemy" style="color:#dc3545">0</span> 相手</div>
@@ -702,22 +702,36 @@
         }
 
         function attemptCreateRoom() {
+            if (typeof Peer === 'undefined') {
+                alert('PeerJSの読み込みに失敗しました。インターネット接続を確認し、ページを再読み込みしてください。');
+                return;
+            }
             myName = document.getElementById('player-name-input').value.trim() || "ホスト";
             maxHp = parseInt(document.getElementById('hp-select').value) || 5000;
+            const out = document.getElementById('room-id-output');
+            out.innerHTML = '部屋を作成中...';
             let randomId = Math.floor(1000 + Math.random() * 9000).toString();
             if (peer) peer.destroy();
             peer = new Peer(randomId, PEER_CONFIG);
             peer.on('open', (id) => {
-                document.getElementById('room-id-output').innerHTML = `
+                out.innerHTML = `
                     あなたの部屋の4桁パスワード:<br>
                     <input type="text" value="${id}" readonly onclick="this.select()" style="padding: 10px; width: 60%; font-size: 26px; margin: 10px 0; text-align: center; border: 3px solid #28a745; border-radius: 8px; cursor: pointer; letter-spacing: 5px; font-weight: bold; background: #e8f5e9; color: #155724;">
+                    <div style="font-size:12px;color:#666;margin-top:5px;">友達が入るまでお待ちください</div>
                 `;
             });
             peer.on('connection', (c) => { conn = c; amIHost = true; setupConnection(); });
-            peer.on('error', (err) => { if (err.type === 'unavailable-id') setTimeout(attemptCreateRoom, 200); else alert("エラー: " + err.type); });
+            peer.on('error', (err) => {
+                if (err.type === 'unavailable-id') setTimeout(attemptCreateRoom, 200);
+                else { out.innerHTML = ''; alert("エラー: " + err.type); }
+            });
         }
 
         function joinRoom() {
+            if (typeof Peer === 'undefined') {
+                alert('PeerJSの読み込みに失敗しました。インターネット接続を確認し、ページを再読み込みしてください。');
+                return;
+            }
             const targetId = document.getElementById('room-id-input').value.trim();
             if (!targetId || targetId.length !== 4) return alert("4桁の数字を入力してください");
             myName = document.getElementById('player-name-input').value.trim() || "ゲスト";
@@ -804,6 +818,10 @@
                 if (data.type === 'surrender') { addLog(data.msg); alert(data.msg); if (amIHost) hpB = 0; else hpA = 0; updateScreen(); checkGameOver(); return; }
                 if (data.type === 'remoteCutin') {
                     if (data.card) enqueuePresentation([{ type: 'cutin', card: data.card }]);
+                    return;
+                }
+                if (data.type === 'cutin') {
+                    enqueuePresentation([{ type: 'cutin', card: { name: data.name, cutin: data.text, ability: data.text, effect: '', type: 'teacher' } }]);
                     return;
                 }
                 if (data.type === 'initGame') {
@@ -921,17 +939,17 @@
 
         function sendHurry() {
             const limit = getHurryLimit(myPlayerId());
-            if (hurryCount >= limit) { alert(`譌ｩ縺上＠繧搾ｼ√・1繧ｿ繝ｼ繝ｳ縺ｫ${limit}蝗槭∪縺ｧ縺ｧ縺吶よｷｱ蜻ｼ蜷ｸ縺励※蠕・■縺ｾ縺励ｇ縺・); return; }
+            if (hurryCount >= limit) { alert(`早くしろ！は1ターンに${limit}回までです。深呼吸して待ちましょう`); return; }
             hurryCount++;
             playSynthSound('hurry');
-            const msg = `弔 縲・{myName}縲代後・繧・￥縺励ｍ・・ｼ・ｼ√港;
+            const msg = `💢 敵:【${myName}】「はやくしろ！！！」`;
             if (conn && conn.open) conn.send({ type: 'hurry', msg });
-            addLog(`逶ｸ謇九ｒ諤･縺九＠縺ｾ縺励◆・・ｼ・{hurryCount}/${limit}蝗橸ｼ荏);
+            addLog(`相手を急かしました！（${hurryCount}/${limit}回）`);
         }
 
         function surrender() {
-            if (!confirm("髯榊盾縺励∪縺吶°・・)) return;
-            let msg = `承・・縲・{myName}縲代′髯榊盾縺励∪縺励◆・～;
+            if (!confirm("降参しますか？")) return;
+            let msg = `🏳️ 【${myName}】が降参しました！`;
             if (conn && conn.open) conn.send({ type: 'surrender', msg });
             if (amIHost) hpA = 0; else hpB = 0;
             addLog(msg); syncState(msg); updateScreen(); checkGameOver();
@@ -1499,7 +1517,7 @@
         };
 
         function initGame() {
-            hpA = maxHp; hpB = getPlayerMaxHp('B'); prevHpA = maxHp; prevHpB = hpB; currentTurn = Math.random() < 0.5 ? 'A' : 'B';
+            hpA = maxHp; hpB = maxHp; prevHpA = maxHp; prevHpB = maxHp; currentTurn = Math.random() < 0.5 ? 'A' : 'B';
             playerSkillState = createEmptyPlayerSkillState(); skillPickIndex = 0; playerTurnCount = 0; turnsSinceLastSkillDraft = 0; confusionTurnsB = 0;
             handA = Array(getHandConfig('A').size).fill(null); handB = Array(getHandConfig('B').size).fill(null); fieldA = []; fieldB = []; buildingStack = [];
             resetTurnActionCounters();
@@ -1518,17 +1536,13 @@
             poolsA = { teacher: new BagPool('teacher'), spell: new BagPool('spell'), weapon: new BagPool('weapon'), building: new BagPool('building') };
             poolsB = { teacher: new BagPool('teacher'), spell: new BagPool('spell'), weapon: new BagPool('weapon'), building: new BagPool('building') };
             
-            drawHand('A'); drawHand('B'); 
-            let firstPlayer = (currentTurn === 'A') ? myName : enemyName; 
-            addLog(`🎲 【${firstPlayer}】の先攻でスタート！(あなたHP: ${maxHp}${isNagamineMode() ? ` / AI HP: ${getPlayerMaxHp('B')}` : ''})`);
+            drawHand('A'); drawHand('B');
             updatePlayerSkillsBar();
             updateScreen();
-            
-            const resumeBattle = () => {
-                
-            };
-            if (isSkillSystemEnabled()) beginSkillPickPhase(resumeBattle);
-            else resumeBattle();
+
+            if (conn && conn.open && amIHost) {
+                conn.send({ type: 'initGame', maxHp, hpA, hpB, fieldA, fieldB, handA, handB, currentTurn, buildingStack, poolsA, poolsB });
+            }
         }
 
         function sendToGraveyard(card, player) {
