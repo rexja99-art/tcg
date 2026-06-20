@@ -110,15 +110,14 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">安定版 Ver 3.14</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">安定版 Ver 3.15</span></h1>
         <div class="patch-notes">
-            <strong>📋 変更履歴（Ver 3.14）</strong><br>
-            ・🃏 手札7枚超過時は点線スロット非表示／6枚に戻ったら余分な空き枠を削除<br>
-            ・⚔️ 攻撃中はフィールド上の攻撃者を非表示（クローンのみ表示）<br>
-            ・🏛️🗡️ 建物・武器はカットインと同時に効果発動（呪文・先生スキルは従来通り）<br>
-            ・📋 状態異常を＋表記なしですべて常時表示<br>
-            ・📜 カットイン内呪文テキストの視認性向上（輪郭・半透明背景）<br>
-            ・🎚️ <b>Ver 3.13</b>：呪文カットイン内嵌・攻撃アニメ・装備UI・AI武器バグ修正
+            <strong>📋 変更履歴（Ver 3.15）</strong><br>
+            ・🎯 Cygein等：装備表示タップで相手指定できないバグを修正<br>
+            ・🎁 クリスマスの木村で「通知」カードもプレゼント可能に<br>
+            ・🤖 強い以上AI：高防御→攻撃装備・高攻撃→防御装備で弱点補完<br>
+            ・📜 呪文カットインの二重表示を解消（小テスト等）<br>
+            ・🎚️ <b>Ver 3.14</b>：手札点線・攻撃非表示・建物武器同時効果・状態異常全表示
         </div>
 
         <div class="win-counter">🏆 現在の戦績: あなた <span id="win-player" style="color:#007bff">0</span> - <span id="win-ai" style="color:#dc3545">0</span> AI</div>
@@ -882,7 +881,12 @@
                 : '';
             const box = document.createElement('div');
             box.className = 'cutin-box' + (playerSkillState.goldCutin ? ' gold-cutin' : '');
-            box.innerHTML = `<div class="cutin-name">${title}</div>${spellEmbed}<div class="cutin-text">${subtitle}</div>`;
+            if (opts.embedSpell && card.type === 'spell') {
+                const banner = card.cutin || card.name;
+                box.innerHTML = `<div class="cutin-name">${banner}</div>${spellEmbed}`;
+            } else {
+                box.innerHTML = `<div class="cutin-name">${title}</div>${spellEmbed}<div class="cutin-text">${subtitle}</div>`;
+            }
             document.body.appendChild(box);
             setTimeout(() => { box.remove(); if (onDone) onDone(); }, CUTIN_DURATION);
         }
@@ -1389,12 +1393,27 @@
         }
 
         function findBestWeaponEquipTarget(weaponId, field) {
-            let bestIdx = -1, maxAtk = -1;
+            const atkWeaponIds = [201, 202, 203, 204, 205, 206, 209, 210, 211];
+            const defWeaponIds = [207, 208, 212, 213];
+            let candidates = [];
             field.forEach((t, idx) => {
-                if (t.type === 'teacher' && !t.inLab && t.kenonTurns === 0 && !t.weapons.some(w => w.id === weaponId) && t.atk > maxAtk) {
-                    maxAtk = t.atk; bestIdx = idx;
+                if (t.type === 'teacher' && !t.inLab && t.kenonTurns === 0 && !t.weapons.some(w => w.id === weaponId)) {
+                    candidates.push({ idx, atk: t.atk, dfn: getEffectiveDfn(t, field) });
                 }
             });
+            if (!candidates.length) return -1;
+            if (isAiStrongTierDifficulty()) {
+                if (atkWeaponIds.includes(weaponId)) {
+                    candidates.sort((a, b) => b.dfn - a.dfn || b.atk - a.atk);
+                } else if (defWeaponIds.includes(weaponId)) {
+                    candidates.sort((a, b) => b.atk - a.atk || b.dfn - a.dfn);
+                } else {
+                    candidates.sort((a, b) => b.atk - a.atk);
+                }
+                return candidates[0].idx;
+            }
+            let bestIdx = -1, maxAtk = -1;
+            candidates.forEach(c => { if (c.atk > maxAtk) { maxAtk = c.atk; bestIdx = c.idx; } });
             return bestIdx;
         }
 
@@ -2236,7 +2255,7 @@
             const myField = fieldA;
             const enemyField = fieldB;
             if (selectionMode === 'clean') return card.id !== 502;
-            if (selectionMode === 'present') return card.id !== 502;
+            if (selectionMode === 'present') return true;
             if (selectionMode === 'baiten') return card.type === 'teacher' && card.id !== 501 && card.id !== 502;
             if (selectionMode) return true;
             if (card.type === 'teacher') {
@@ -2371,7 +2390,7 @@
                     const cardEl = createCardElement(card, null, null, handLanHidden);
                     cardEl.style.boxShadow = '0 0 15px #28a745';
                     cardEl.onclick = () => {
-                        if(!isMyTurn() || card.id === 502) return;
+                        if(!isMyTurn()) return;
                         playUserClickSound();
                         let gift = currentHand[idx]; currentHand[idx] = null;
                         pushCardToHand(handB, gift, 'B');
@@ -2491,7 +2510,7 @@
             return { statusLines, equipLines, abilityLine, compactLine, moreCount, allLines };
         }
 
-        function createCardElement(card, ownerField = null, fieldPlayer = null, handObscured = false) {
+        function createCardElement(card, ownerField = null, fieldPlayer = null, handObscured = false, disableWeaponDetail = false) {
             const cardEl = document.createElement('div'); cardEl.className = 'card';
 
             if (handObscured) {
@@ -2547,6 +2566,12 @@
             cardEl.innerHTML = `<div class="card-header"><div class="card-name">${shownCardName}</div><div class="card-stats">${statsHtml}</div></div><div style="color: #ffaa00; font-size: 8px; text-align: left;">${stars}</div><div class="card-ability">${compactHtml}<div class="card-effect-detail">${card.effect || ''}</div></div>`;
 
             cardEl.querySelectorAll('.weapon-equip-link').forEach(el => {
+                if (disableWeaponDetail) {
+                    el.style.pointerEvents = 'none';
+                    el.style.textDecoration = 'none';
+                    el.style.cursor = 'inherit';
+                    return;
+                }
                 el.addEventListener('click', (e) => {
                     e.stopPropagation();
                     showWeaponDetail(parseInt(el.dataset.weaponId, 10));
@@ -2584,8 +2609,12 @@
 
         function createFieldCardElement(card, player, index) {
             const ownerField = player === 'A' ? fieldA : fieldB;
-            const cardEl = createCardElement(card, ownerField, player);
             const isMine = player === 'A';
+            const blockWeaponLink = !isMine && (
+                selectionMode === 'spell_119' ||
+                (attackingCardIndexes.length > 0 && !selectionMode)
+            );
+            const cardEl = createCardElement(card, ownerField, player, false, blockWeaponLink);
             cardEl.style.background = isMine ? (card.type==='building'?'#fff3cd':'#cce5ff') : (card.type==='building'?'#ffeeba':'#f8d7da'); 
             cardEl.style.borderColor = isMine ? (card.type==='building'?'#d39e00':'#004085') : (card.type==='building'?'#d39e00':'#721c24');
             cardEl.id = `field-card-${player}-${index}`; cardEl.dataset.index = index; cardEl.dataset.mode = isMine ? 'self' : 'enemy';
@@ -3220,7 +3249,7 @@
                             selectionMode = 'present'; document.getElementById('guidance-message').innerHTML = `相手にプレゼントするカードを選んでください。<button onclick="endPresentMode()" style="padding:2px 8px; margin-left:10px; cursor:pointer; background:#6c757d; color:white; border:none; border-radius:3px; font-weight:bold;">やめる</button>`;
                         } else {
                             // AIプレゼント処理
-                            let giftIdx = handB.findIndex((c, i) => c && i !== cardIndex && c.id !== 501 && c.id !== 502);
+                            let giftIdx = handB.findIndex((c, i) => c && i !== cardIndex && c.id !== 501);
                             if (giftIdx !== -1) {
                                 let gift = handB[giftIdx]; handB[giftIdx] = null;
                                 pushCardToHand(handA, gift, 'A');
