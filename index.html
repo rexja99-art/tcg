@@ -122,11 +122,11 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">オンライン版 Ver 31.36</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">オンライン版 Ver 31.37</span></h1>
         <div class="patch-notes">
-            <strong>📋 変更履歴（Ver 31.36）</strong><br>
-            ・🐛 効果音・プレゼンキュー処理の欠落を修正（接続時エラー解消）<br>
-            ・🐛 部屋作成ができない不具合を修正（通信コードの文字化けによるJSエラー）
+            <strong>📋 変更履歴（Ver 31.37）</strong><br>
+            ・✨ 対人戦で両プレイヤーがスキルを獲得できるよう修正<br>
+            ・🔄 決着後にホームへ戻った際、接続中のまま固まる不具合を修正
         </div>
         <div class="win-counter">🏆 現在の戦績: あなた <span id="win-player" style="color:#007bff">0</span> - <span id="win-enemy" style="color:#dc3545">0</span> 相手</div>
         <input type="text" id="player-name-input" class="name-input" placeholder="あなたの名前を入力" value="ゲスト">
@@ -253,12 +253,44 @@
         const GUARDIAN_BUILDING_IDS = [306, 307, 308];
 
         let skillEnabled = localStorage.getItem('tcgSkillOn') !== 'false';
-        let skillPickIndex = 0;
-        let playerTurnCount = 0;
-        let turnsSinceLastSkillDraft = 0;
+        let skillPickIndexA = 0, skillPickIndexB = 0;
+        let turnsSinceLastSkillDraftA = 0, turnsSinceLastSkillDraftB = 0;
         let skillPickResumeCallback = null;
-        let confusionTurnsB = 0;
-        let playerSkillState = createEmptyPlayerSkillState();
+        let skillApplyPlayer = 'A';
+        let skillPickOfferLock = false;
+        let confusionTurnsA = 0, confusionTurnsB = 0;
+        let playerSkillStateA = createEmptyPlayerSkillState();
+        let playerSkillStateB = createEmptyPlayerSkillState();
+
+        function getPlayerSkillState(player) { return player === 'A' ? playerSkillStateA : playerSkillStateB; }
+        function getSkillPickIndex(player) { return player === 'A' ? skillPickIndexA : skillPickIndexB; }
+        function bumpSkillPickIndex(player) { if (player === 'A') skillPickIndexA++; else skillPickIndexB++; }
+        function getTurnsSinceSkillDraft(player) { return player === 'A' ? turnsSinceLastSkillDraftA : turnsSinceLastSkillDraftB; }
+        function resetTurnsSinceSkillDraft(player) { if (player === 'A') turnsSinceLastSkillDraftA = 0; else turnsSinceLastSkillDraftB = 0; }
+        function bumpTurnsSinceSkillDraft(player) { if (player === 'A') turnsSinceLastSkillDraftA++; else turnsSinceLastSkillDraftB++; }
+        function skillEnemyPlayer() { return skillApplyPlayer === 'A' ? 'B' : 'A'; }
+        function skillMyHand() { return skillApplyPlayer === 'A' ? handA : handB; }
+        function skillMyField() { return skillApplyPlayer === 'A' ? fieldA : fieldB; }
+        function skillEnemyField() { return skillApplyPlayer === 'A' ? fieldB : fieldA; }
+        function skillMyPools() { return skillApplyPlayer === 'A' ? poolsA : poolsB; }
+        function skillDamageEnemyHp(ratio, label) {
+            const ep = skillEnemyPlayer();
+            const dmg = Math.floor(getPlayerMaxHp(ep) * ratio);
+            if (ep === 'A') hpA = Math.max(0, hpA - dmg); else hpB = Math.max(0, hpB - dmg);
+            return label;
+        }
+        function skillSetEnemyPoison(level) {
+            const ep = skillEnemyPlayer();
+            if (ep === 'A') poisonA = Math.max(poisonA, level); else poisonB = Math.max(poisonB, level);
+            const p = ep === 'A' ? poisonA : poisonB;
+            return `敵プレイヤーに${p >= 3 ? '超毒' : p >= 2 ? '猛毒' : '毒'}`;
+        }
+        function skillSetEnemyBurn(level) {
+            const ep = skillEnemyPlayer();
+            if (ep === 'A') burnA = Math.max(burnA, level); else burnB = Math.max(burnB, level);
+            const b = ep === 'A' ? burnA : burnB;
+            return `敵プレイヤーに${b >= 3 ? '超やけど' : b >= 2 ? '大やけど' : 'やけど'}`;
+        }
 
         function createEmptyPlayerSkillState() {
             return {
@@ -292,65 +324,66 @@
         }
 
         function skillHealPlayer(ratio, label) {
-            const heal = Math.floor(getPlayerMaxHp('A') * ratio);
-            hpA += heal;
+            const p = skillApplyPlayer;
+            const heal = Math.floor(getPlayerMaxHp(p) * ratio);
+            if (p === 'A') hpA += heal; else hpB += heal;
             return `${label}（+${heal} / 上限突破）`;
         }
 
         function shouldOfferSkillPickOnTurnStart() {
-            if (!isSkillSystemEnabled() || hpA <= 0 || hpB <= 0 || currentTurn !== 'A') return false;
-            return turnsSinceLastSkillDraft >= 3;
+            if (!isSkillSystemEnabled() || hpA <= 0 || hpB <= 0 || !isMyTurn()) return false;
+            return getTurnsSinceSkillDraft(myPlayerId()) >= 3;
         }
 
         function buildSkillPool() {
-            const ps = () => playerSkillState;
+            const ps = () => getPlayerSkillState(skillApplyPlayer);
             const pool = [];
             const reg = (star, permanent, name, desc, apply) => pool.push({ star, permanent, name, desc, apply });
             reg(1, true, '永久 味方ATK+10%', '味方ティーチャーの攻撃力+10%（累積）', () => { ps().allyAtkPct += 10; return '永久：味方ATK+10%'; });
             reg(1, true, '永久 味方DEF+10%', '味方ティーチャーの防御力+10%（累積）', () => { ps().allyDfnPct += 10; return '永久：味方DEF+10%'; });
             reg(1, false, 'HP+10%回復', '自分のHPを最大HPの10%回復（上限突破可）', () => skillHealPlayer(0.1, 'HP+10%回復'));
-            reg(1, false, '敵HP-10%', '敵プレイヤーの体力-10%', () => { hpB = Math.max(0, hpB - Math.floor(getPlayerMaxHp('B') * 0.1)); return '敵HP-10%'; });
-            reg(1, false, '手札に長峰', '手札に長峰を1枚加える', () => { const c = initCardState(cardById(1)); pushCardToHand(handA, c, 'A'); return '手札に長峰追加'; });
+            reg(1, false, '敵HP-10%', '敵プレイヤーの体力-10%', () => skillDamageEnemyHp(0.1, '敵HP-10%'));
+            reg(1, false, '手札に長峰', '手札に長峰を1枚加える', () => { const c = initCardState(cardById(1)); pushCardToHand(skillMyHand(), c, skillApplyPlayer); return '手札に長峰追加'; });
             reg(1, true, '永久 早くしろ+5', '早くしろボタン上限+5（累積）', () => { ps().hurryBonus += 5; return '永久：早くしろ+5'; });
             reg(1, false, '敵プレイヤーにランダム状態異常', '敵プレイヤーにランダムな状態異常（毒・やけど等）', () => applyRandomStatusToEnemyPlayer());
             reg(1, true, '永久 被ダメ-1%', '被ダメージ-1%（累積・最大90%）', () => { ps().dmgReducePct = Math.min(90, ps().dmgReducePct + 1); return '永久：被ダメ-1%'; });
             reg(1, false, 'ランダム召喚×1', 'ランダムなティーチャー1体をフィールドに', () => skillSummonRandomTeachers(1));
-            reg(1, false, '手札シャッフル', '手札を全捨てして6枚ドローし直す', () => { shufflePlayerHand(); return '手札を全捨て＋再ドロー'; });
+            reg(1, false, '手札シャッフル', '手札を全捨てして6枚ドローし直す', () => { shufflePlayerHand(skillApplyPlayer); return '手札を全捨て＋再ドロー'; });
             reg(1, true, '永久 攻撃無効1%', '1%で攻撃無効（累積）', () => { ps().nullifyAtkPct += 1; return '永久：攻撃無効+1%'; });
-            reg(1, false, '敵やけど', '敵プレイヤーをやけど状態に', () => { burnB = Math.max(burnB, 1); return '敵をやけどに'; });
+            reg(1, false, '敵やけど', '敵プレイヤーをやけど状態に', () => { skillSetEnemyBurn(1); return '敵をやけどに'; });
             reg(1, true, '永久 クリティカル1%', '1%でクリティカル（累積）', () => { ps().critPct += 1; return '永久：クリ+1%'; });
             reg(1, false, '500G獲得', '500Gもらえる（このゲームでは無意味）', () => '💰 500G獲得！（…使い道はない）');
             reg(2, true, '永久 味方ATK+20%', '味方ティーチャーの攻撃力+20%（累積）', () => { ps().allyAtkPct += 20; return '永久：味方ATK+20%'; });
             reg(2, true, '永久 味方DEF+20%', '味方ティーチャーの防御力+20%（累積）', () => { ps().allyDfnPct += 20; return '永久：味方DEF+20%'; });
             reg(2, false, 'HP+20%回復', '自分のHPを最大HPの20%回復（上限突破可）', () => skillHealPlayer(0.2, 'HP+20%回復'));
-            reg(2, false, '敵HP-5%', '敵プレイヤーの体力-5%', () => { hpB = Math.max(0, hpB - Math.floor(getPlayerMaxHp('B') * 0.05)); return '敵HP-5%'; });
+            reg(2, false, '敵HP-5%', '敵プレイヤーの体力-5%', () => skillDamageEnemyHp(0.05, '敵HP-5%'));
             reg(2, true, '永久 早くしろ+10', '早くしろボタン上限+10（累積）', () => { ps().hurryBonus += 10; return '永久：早くしろ+10'; });
-            reg(2, false, '東大組登場', 'フィールドにジョージと長峰を登場', () => { spawnSkillTeacher(5); spawnSkillTeacher(1); return '東大組（ジョージ＆長峰）登場'; });
+            reg(2, false, '東大組登場', 'フィールドにジョージと長峰を登場', () => { spawnSkillTeacher(5, skillApplyPlayer); spawnSkillTeacher(1, skillApplyPlayer); return '東大組（ジョージ＆長峰）登場'; });
             reg(2, true, '永久 被ダメ-2%', '被ダメージ-2%（累積・最大90%）', () => { ps().dmgReducePct = Math.min(90, ps().dmgReducePct + 2); return '永久：被ダメ-2%'; });
             reg(2, false, 'ランダム召喚×2', 'ランダムなティーチャー2体をフィールドに', () => skillSummonRandomTeachers(2));
-            reg(2, false, '敵猛毒', '敵プレイヤーを猛毒状態に', () => { poisonB = Math.max(poisonB, 2); return '敵を猛毒に'; });
-            reg(2, false, '先生ランダム変化', '手札とフィールドの先生がランダムな先生に', () => skillRandomizeAllPlayerTeachers());
+            reg(2, false, '敵猛毒', '敵プレイヤーを猛毒状態に', () => { skillSetEnemyPoison(2); return '敵を猛毒に'; });
+            reg(2, false, '先生ランダム変化', '手札とフィールドの先生がランダムな先生に', () => skillRandomizeAllPlayerTeachers(skillApplyPlayer));
             reg(2, true, '永久 クリティカル3%', '3%でクリティカル（累積）', () => { ps().critPct += 3; return '永久：クリ+3%'; });
             reg(2, true, '永久 徘徊10%', '10%で味方先生が徘徊（累積）', () => { ps().wanderPct += 10; return '永久：徘徊+10%'; });
             reg(3, true, '永久 味方ATK+40%', '味方ティーチャーの攻撃力+40%（累積）', () => { ps().allyAtkPct += 40; return '永久：味方ATK+40%'; });
             reg(3, true, '永久 味方DEF+40%', '味方ティーチャーの防御力+40%（累積）', () => { ps().allyDfnPct += 40; return '永久：味方DEF+40%'; });
             reg(3, false, 'HP+40%回復', '自分のHPを最大HPの40%回復（上限突破可）', () => skillHealPlayer(0.4, 'HP+40%回復'));
-            reg(3, false, '敵HP-15%', '敵プレイヤーの体力-15%', () => { hpB = Math.max(0, hpB - Math.floor(getPlayerMaxHp('B') * 0.15)); return '敵HP-15%'; });
+            reg(3, false, '敵HP-15%', '敵プレイヤーの体力-15%', () => skillDamageEnemyHp(0.15, '敵HP-15%'));
             reg(3, true, '永久 早くしろ+15', '早くしろボタン上限+15（累積）', () => { ps().hurryBonus += 15; return '永久：早くしろ+15'; });
-            reg(3, true, '永久 致命傷耐性', '全味方先生+1回致命傷耐性（累積）', () => { ps().allyReviveBonus += 1; fieldA.forEach(c => { if (c.type === 'teacher') c.revivesLeft += 1; }); return '永久：致命傷耐性+1'; });
+            reg(3, true, '永久 致命傷耐性', '全味方先生+1回致命傷耐性（累積）', () => { ps().allyReviveBonus += 1; skillMyField().forEach(c => { if (c.type === 'teacher') c.revivesLeft += 1; }); return '永久：致命傷耐性+1'; });
             reg(3, true, '永久 状態異常無効10%', '10%で状態異常無効（累積）', () => { ps().statusImmunePct = Math.min(100, ps().statusImmunePct + 10); return '永久：状態異常無効+10%'; });
             reg(3, true, '永久 被ダメ-4%', '被ダメージ-4%（累積・最大90%）', () => { ps().dmgReducePct = Math.min(90, ps().dmgReducePct + 4); return '永久：被ダメ-4%'; });
             reg(3, false, 'ランダム召喚×3', 'ランダムなティーチャー3体をフィールドに', () => skillSummonRandomTeachers(3));
-            reg(3, false, '敵超毒', '敵プレイヤーを超毒状態に', () => { poisonB = Math.max(poisonB, 3); return '敵を超毒に'; });
+            reg(3, false, '敵超毒', '敵プレイヤーを超毒状態に', () => { skillSetEnemyPoison(3); return '敵を超毒に'; });
             reg(3, true, '永久 クリティカル8%', '8%でクリティカル（累積）', () => { ps().critPct += 8; return '永久：クリ+8%'; });
             reg(3, false, 'カットインが金', 'カットインが金色になる（永久）', () => { ps().goldCutin = true; return '永久：金色カットイン'; });
             reg(4, true, '永久 味方ATK+60%', '味方ティーチャーの攻撃力+60%（累積）', () => { ps().allyAtkPct += 60; return '永久：味方ATK+60%'; });
             reg(4, true, '永久 味方DEF+60%', '味方ティーチャーの防御力+60%（累積）', () => { ps().allyDfnPct += 60; return '永久：味方DEF+60%'; });
             reg(4, false, 'HP+60%回復', '自分のHPを最大HPの60%回復（上限突破可）', () => skillHealPlayer(0.6, 'HP+60%回復'));
             reg(4, true, '永久 早くしろ+20', '早くしろボタン上限+20（累積）', () => { ps().hurryBonus += 20; return '永久：早くしろ+20'; });
-            reg(4, true, '永久 手札+1', '手札スロット+1（累積）', () => { ps().extraHandSlots += 1; resizePlayerHand(); drawHand('A'); return '永久：手札+1'; });
+            reg(4, true, '永久 手札+1', '手札スロット+1（累積）', () => { ps().extraHandSlots += 1; resizePlayerHand(skillApplyPlayer); drawHand(skillApplyPlayer); return '永久：手札+1'; });
             reg(4, true, '永久 即攻撃', '出したターンから攻撃可能', () => { ps().summonSameTurn = true; return '永久：召喚ターン即攻撃'; });
-            reg(4, false, '手札全長峰化', '手札をすべて長峰にする', () => { for (let i = 0; i < handA.length; i++) handA[i] = initCardState(cardById(1)); return '手札を全て長峰に'; });
+            reg(4, false, '手札全長峰化', '手札をすべて長峰にする', () => { const h = skillMyHand(); for (let i = 0; i < h.length; i++) h[i] = initCardState(cardById(1)); return '手札を全て長峰に'; });
             reg(4, true, '永久 状態異常無効20%', '20%で状態異常無効（累積）', () => { ps().statusImmunePct = Math.min(100, ps().statusImmunePct + 20); return '永久：状態異常無効+20%'; });
             reg(4, true, '永久 被ダメ-6%', '被ダメージ-6%（累積・最大90%）', () => { ps().dmgReducePct = Math.min(90, ps().dmgReducePct + 6); return '永久：被ダメ-6%'; });
             reg(4, true, '永久 クリティカル12%', '12%でクリティカル（累積）', () => { ps().critPct += 12; return '永久：クリ+12%'; });
@@ -368,7 +401,7 @@
             reg(5, true, '永久 2回攻撃', '味方ティーチャー2回攻撃', () => { ps().doubleAttack = true; return '永久：2回攻撃'; });
             reg(5, true, '永久 毎ターン召喚', '毎ターンランダムなティーチャー1体をフィールドに', () => { ps().randomSummonPerTurn += 1; return '永久：毎ターン召喚+1'; });
             reg(5, true, '永久 クリティカル30%', '30%でクリティカル（累積）', () => { ps().critPct += 30; return '永久：クリ+30%'; });
-            reg(5, false, '敵全状態異常', '敵の先生全員に全状態異常', () => skillApplyAllStatusesToEnemies());
+            reg(5, false, '敵全状態異常', '敵の先生全員に全状態異常', () => skillApplyAllStatusesToEnemies(skillApplyPlayer));
             reg(5, false, '99999G獲得', '99999Gもらえる（このゲームでは無意味）', () => '💰 99999G獲得！（…使い道はない）');
             reg(5, true, '永久 混乱25%', 'ターン開始時25%で敵1ターン混乱', () => { ps().confuseEnemyPct += 25; return '永久：混乱+25%'; });
             return pool;
@@ -378,65 +411,97 @@
         function getSkillPool() { if (!SKILL_POOL) SKILL_POOL = buildSkillPool(); return SKILL_POOL; }
 
         function applyRandomStatusToEnemyPlayer() {
+            const ep = skillEnemyPlayer();
             const roll = Math.floor(Math.random() * 5);
-            if (roll === 0) { poisonB = Math.max(poisonB, 1 + Math.floor(Math.random() * 3)); return `敵プレイヤーに${poisonB >= 3 ? '超毒' : poisonB >= 2 ? '猛毒' : '毒'}`; }
-            if (roll === 1) { burnB = Math.max(burnB, 1 + Math.floor(Math.random() * 3)); return `敵プレイヤーに${burnB >= 3 ? '超やけど' : burnB >= 2 ? '大やけど' : 'やけど'}`; }
-            if (roll === 2) { sakuraTurnsB = Math.max(sakuraTurnsB, 2); return '敵プレイヤーに検温義務'; }
-            if (roll === 3) { whiteboardTurnsB = Math.max(whiteboardTurnsB, 2); return '敵プレイヤーに落書き'; }
-            lanTurnsB = Math.max(lanTurnsB, 2); return '敵プレイヤーにLAN';
+            if (roll === 0) {
+                if (ep === 'A') poisonA = Math.max(poisonA, 1 + Math.floor(Math.random() * 3));
+                else poisonB = Math.max(poisonB, 1 + Math.floor(Math.random() * 3));
+                const p = ep === 'A' ? poisonA : poisonB;
+                return `敵プレイヤーに${p >= 3 ? '超毒' : p >= 2 ? '猛毒' : '毒'}`;
+            }
+            if (roll === 1) {
+                if (ep === 'A') burnA = Math.max(burnA, 1 + Math.floor(Math.random() * 3));
+                else burnB = Math.max(burnB, 1 + Math.floor(Math.random() * 3));
+                const b = ep === 'A' ? burnA : burnB;
+                return `敵プレイヤーに${b >= 3 ? '超やけど' : b >= 2 ? '大やけど' : 'やけど'}`;
+            }
+            if (roll === 2) {
+                if (ep === 'A') sakuraTurnsA = Math.max(sakuraTurnsA, 2); else sakuraTurnsB = Math.max(sakuraTurnsB, 2);
+                return '敵プレイヤーに検温義務';
+            }
+            if (roll === 3) {
+                if (ep === 'A') whiteboardTurnsA = Math.max(whiteboardTurnsA, 2); else whiteboardTurnsB = Math.max(whiteboardTurnsB, 2);
+                return '敵プレイヤーに落書き';
+            }
+            if (ep === 'A') lanTurnsA = Math.max(lanTurnsA, 2); else lanTurnsB = Math.max(lanTurnsB, 2);
+            return '敵プレイヤーにLAN';
         }
 
-        function rollSkillStatusImmune() {
-            return playerSkillState.statusImmunePct > 0 && Math.random() * 100 < playerSkillState.statusImmunePct;
+        function rollSkillStatusImmune(player) {
+            const ps = getPlayerSkillState(player);
+            return ps.statusImmunePct > 0 && Math.random() * 100 < ps.statusImmunePct;
         }
 
-        function skillSummonRandomTeachers(n) {
+        function skillSummonRandomTeachers(n, player) {
+            const p = player || skillApplyPlayer;
             const names = [];
+            const pool = p === 'A' ? poolsA : poolsB;
+            const field = p === 'A' ? fieldA : fieldB;
             for (let i = 0; i < n; i++) {
-                const c = poolsA.teacher.draw();
+                const c = pool.teacher.draw();
                 c.canAttack = false;
-                fieldA.push(c);
-                applyPlayerSkillOnTeacherEnter(c);
+                field.push(c);
+                applyPlayerSkillOnTeacherEnter(c, p);
                 names.push(c.name);
             }
             return `ランダム召喚：${names.join('、')}をフィールドに`;
         }
 
-        function shufflePlayerHand() {
-            for (let i = 0; i < handA.length; i++) {
-                if (handA[i]) { sendToGraveyard(handA[i], 'A'); handA[i] = null; }
+        function shufflePlayerHand(player) {
+            const p = player || skillApplyPlayer;
+            const hand = p === 'A' ? handA : handB;
+            for (let i = 0; i < hand.length; i++) {
+                if (hand[i]) { sendToGraveyard(hand[i], p); hand[i] = null; }
             }
-            drawHand('A');
+            drawHand(p);
         }
 
-        function spawnSkillTeacher(id) {
+        function spawnSkillTeacher(id, player) {
+            const p = player || skillApplyPlayer;
             const c = initCardState(cardById(id));
             c.canAttack = false;
-            fieldA.push(c);
-            applyPlayerSkillOnTeacherEnter(c);
+            (p === 'A' ? fieldA : fieldB).push(c);
+            applyPlayerSkillOnTeacherEnter(c, p);
         }
 
-        function skillRandomizeAllPlayerTeachers() {
+        function skillRandomizeAllPlayerTeachers(player) {
+            const p = player || skillApplyPlayer;
+            const hand = p === 'A' ? handA : handB;
+            const field = p === 'A' ? fieldA : fieldB;
             const teachers = CARD_LIST.filter(c => c.type === 'teacher' && c.id < 400);
             const pick = () => initCardState(teachers[Math.floor(Math.random() * teachers.length)]);
-            for (let i = 0; i < handA.length; i++) if (handA[i] && handA[i].type === 'teacher') handA[i] = pick();
-            fieldA.forEach((c, i) => { if (c.type === 'teacher') fieldA[i] = pick(); });
+            for (let i = 0; i < hand.length; i++) if (hand[i] && hand[i].type === 'teacher') hand[i] = pick();
+            field.forEach((c, i) => { if (c.type === 'teacher') field[i] = pick(); });
             return '手札・フィールドの先生をランダム化';
         }
 
-        function skillApplyAllStatusesToEnemies() {
-            fieldB.forEach(t => {
+        function skillApplyAllStatusesToEnemies(ownerPlayer) {
+            const ep = ownerPlayer === 'A' ? 'B' : 'A';
+            const enemyField = ep === 'A' ? fieldA : fieldB;
+            enemyField.forEach(t => {
                 if (t.type !== 'teacher' || t.inLab || t.kenonTurns > 0 || t.id === 11) return;
                 t.hanseibunTurns = 2; t.videoTurns = 2; t.sleepTurns = 2; t.freezeTurns = 2;
                 t.bindTurns = 2; t.isLaughing = true; t.pechankoTurns = 1;
             });
-            poisonB = Math.max(poisonB, 3); burnB = Math.max(burnB, 3);
+            if (ep === 'A') { poisonA = Math.max(poisonA, 3); burnA = Math.max(burnA, 3); }
+            else { poisonB = Math.max(poisonB, 3); burnB = Math.max(burnB, 3); }
             return '敵先生全員に状態異常';
         }
 
-        function resizePlayerHand() {
-            const size = getHandConfig('A').size;
-            while (handA.length < size) handA.push(null);
+        function resizePlayerHand(player) {
+            const size = getHandConfig(player).size;
+            const hand = player === 'A' ? handA : handB;
+            while (hand.length < size) hand.push(null);
         }
 
         function generateSkillOffers() {
@@ -460,19 +525,28 @@
         function updatePlayerSkillsBar() {
             const bar = document.getElementById('player-skills-bar');
             if (!bar) return;
-            if (!isSkillSystemEnabled() || !playerSkillState.pickedSkills.length) { bar.style.display = 'none'; return; }
+            const mySkills = getPlayerSkillState(myPlayerId()).pickedSkills;
+            if (!isSkillSystemEnabled() || !mySkills.length) { bar.style.display = 'none'; return; }
             bar.style.display = 'block';
-            bar.innerHTML = '<b>✨獲得スキル:</b> ' + playerSkillState.pickedSkills.map(s => `[★${s.star}${s.permanent ? '永久' : ''}] ${s.name}`).join(' / ');
+            bar.innerHTML = '<b>✨獲得スキル:</b> ' + mySkills.map(s => `[★${s.star}${s.permanent ? '永久' : ''}] ${s.name}`).join(' / ');
+        }
+
+        function maybeOfferSkillPickFromRemote() {
+            if (skillPickOfferLock || skillPickResumeCallback) return;
+            if (!shouldOfferSkillPickOnTurnStart() || !isMyTurn()) return;
+            skillPickOfferLock = true;
+            beginSkillPickPhase(() => { skillPickOfferLock = false; syncState(); });
         }
 
         function beginSkillPickPhase(onDone) {
             if (!isSkillSystemEnabled()) { if (onDone) onDone(); return; }
+            skillApplyPlayer = myPlayerId();
             skillPickResumeCallback = onDone;
             const overlay = document.getElementById('skill-pick-overlay');
             const opts = document.getElementById('skill-pick-options');
             const offers = generateSkillOffers();
             opts.innerHTML = '';
-            document.getElementById('skill-pick-sub').textContent = `第${skillPickIndex + 1}回目 — 3つから1つ選んでください`;
+            document.getElementById('skill-pick-sub').textContent = `第${getSkillPickIndex(skillApplyPlayer) + 1}回目 — 3つから1つ選んでください`;
             offers.forEach(skill => {
                 const el = document.createElement('div');
                 el.className = `skill-pick-card star-${skill.star}`;
@@ -484,10 +558,11 @@
         }
 
         function selectSkill(skill) {
+            const p = skillApplyPlayer;
             const msg = skill.apply();
-            playerSkillState.pickedSkills.push({ star: skill.star, permanent: skill.permanent, name: skill.name });
-            skillPickIndex++;
-            turnsSinceLastSkillDraft = 0;
+            getPlayerSkillState(p).pickedSkills.push({ star: skill.star, permanent: skill.permanent, name: skill.name });
+            bumpSkillPickIndex(p);
+            resetTurnsSinceSkillDraft(p);
             addLog(`✨ スキル獲得：[★${skill.star}] ${skill.name} — ${msg}`);
             document.getElementById('skill-pick-overlay').classList.remove('active');
             updatePlayerSkillsBar();
@@ -498,11 +573,12 @@
             if (cb) cb();
         }
 
-        function applyPlayerSkillOnTeacherEnter(card) {
+        function applyPlayerSkillOnTeacherEnter(card, player) {
             if (!card || card.type !== 'teacher') return;
-            if (playerSkillState.allyReviveBonus > 0 && card.revivesLeft === 0 && card.id !== 7) card.revivesLeft = playerSkillState.allyReviveBonus;
-            if (playerSkillState.firstTurnInvincible) card.invincibleTurns = 1;
-            if (playerSkillState.summonSameTurn && card.hanseibunTurns === 0 && card.videoTurns === 0 && card.sleepTurns === 0 && !card.isPetrified && card.kenonTurns === 0 && card.freezeTurns === 0 && card.bindTurns === 0) {
+            const ps = getPlayerSkillState(player || currentTurn);
+            if (ps.allyReviveBonus > 0 && card.revivesLeft === 0 && card.id !== 7) card.revivesLeft = ps.allyReviveBonus;
+            if (ps.firstTurnInvincible) card.invincibleTurns = 1;
+            if (ps.summonSameTurn && card.hanseibunTurns === 0 && card.videoTurns === 0 && card.sleepTurns === 0 && !card.isPetrified && card.kenonTurns === 0 && card.freezeTurns === 0 && card.bindTurns === 0) {
                 card.canAttack = true;
                 card.fieldTurns = 0;
             }
@@ -511,57 +587,66 @@
         function getSkillModifiedAtk(card, player) {
             if (!card || card.type !== 'teacher') return card ? (card.isLaughing ? 1 : card.atk) : 0;
             let atk = card.isLaughing ? 1 : card.atk;
-            if (player === 'A' && playerSkillState.allyAtkPct > 0) atk = Math.floor(atk * (1 + playerSkillState.allyAtkPct / 100));
+            const ps = getPlayerSkillState(player);
+            if (ps.allyAtkPct > 0) atk = Math.floor(atk * (1 + ps.allyAtkPct / 100));
             return atk;
         }
 
         function applySkillCritIfNeeded(atk, player) {
-            if (player !== 'A' || playerSkillState.critPct <= 0) return { atk, crit: false };
-            if (Math.random() * 100 < playerSkillState.critPct) return { atk: atk * 2, crit: true };
+            const ps = getPlayerSkillState(player);
+            if (ps.critPct <= 0) return { atk, crit: false };
+            if (Math.random() * 100 < ps.critPct) return { atk: atk * 2, crit: true };
             return { atk, crit: false };
         }
 
-        function applySkillDamageToPlayerA(rawDmg) {
+        function applySkillDamageToPlayer(player, rawDmg) {
             if (rawDmg <= 0) return 0;
-            if (playerSkillState.nullifyAtkPct > 0 && Math.random() * 100 < playerSkillState.nullifyAtkPct) return -1;
-            let dmg = rawDmg * (1 - Math.min(90, playerSkillState.dmgReducePct) / 100);
+            const ps = getPlayerSkillState(player);
+            if (ps.nullifyAtkPct > 0 && Math.random() * 100 < ps.nullifyAtkPct) return -1;
+            let dmg = rawDmg * (1 - Math.min(90, ps.dmgReducePct) / 100);
             return Math.max(0, Math.floor(dmg));
         }
 
-        function applySkillTurnStartForPlayer() {
+        function applySkillTurnStartForPlayer(player) {
+            const ps = getPlayerSkillState(player);
+            const myField = player === 'A' ? fieldA : fieldB;
+            const enemyField = player === 'A' ? fieldB : fieldA;
+            const myPools = player === 'A' ? poolsA : poolsB;
             let msg = '';
-            if (playerSkillState.randomSummonPerTurn > 0) {
-                for (let i = 0; i < playerSkillState.randomSummonPerTurn; i++) {
-                    const c = poolsA.teacher.draw();
+            if (ps.randomSummonPerTurn > 0) {
+                for (let i = 0; i < ps.randomSummonPerTurn; i++) {
+                    const c = myPools.teacher.draw();
                     c.canAttack = false;
-                    fieldA.push(c);
-                    applyPlayerSkillOnTeacherEnter(c);
+                    myField.push(c);
+                    applyPlayerSkillOnTeacherEnter(c, player);
                     msg += `\n✨ スキル： [${c.name}] を召喚`;
                 }
             }
-            if (playerSkillState.paralyzeEnemyPct > 0) {
-                fieldB.forEach(t => {
-                    if (t.type === 'teacher' && !t.inLab && t.kenonTurns === 0 && Math.random() * 100 < playerSkillState.paralyzeEnemyPct) {
+            if (ps.paralyzeEnemyPct > 0) {
+                enemyField.forEach(t => {
+                    if (t.type === 'teacher' && !t.inLab && t.kenonTurns === 0 && Math.random() * 100 < ps.paralyzeEnemyPct) {
                         t.sleepTurns = Math.max(t.sleepTurns, 1);
                     }
                 });
                 msg += `\n✨ スキル：麻痺発動`;
             }
-            if (playerSkillState.confuseEnemyPct > 0 && Math.random() * 100 < playerSkillState.confuseEnemyPct) {
-                confusionTurnsB = 1;
+            if (ps.confuseEnemyPct > 0 && Math.random() * 100 < ps.confuseEnemyPct) {
+                if (player === 'A') confusionTurnsB = 1; else confusionTurnsA = 1;
                 msg += `\n✨ スキル：敵が混乱！`;
             }
             return msg;
         }
 
-        function applySkillWanderAtTurnEnd() {
-            if (playerSkillState.wanderPct <= 0) return '';
+        function applySkillWanderAtTurnEnd(player) {
+            const ps = getPlayerSkillState(player);
+            if (ps.wanderPct <= 0) return '';
+            const myField = player === 'A' ? fieldA : fieldB;
             let msg = '';
-            for (let i = fieldA.length - 1; i >= 0; i--) {
-                const c = fieldA[i];
-                if (c.type === 'teacher' && !c.inLab && c.kenonTurns === 0 && Math.random() * 100 < playerSkillState.wanderPct) {
-                    const w = fieldA.splice(i, 1)[0];
-                    wanderSpace.push({ card: w, originalPlayer: 'A', remainingTurns: 2 });
+            for (let i = myField.length - 1; i >= 0; i--) {
+                const c = myField[i];
+                if (c.type === 'teacher' && !c.inLab && c.kenonTurns === 0 && Math.random() * 100 < ps.wanderPct) {
+                    const w = myField.splice(i, 1)[0];
+                    wanderSpace.push({ card: w, originalPlayer: player, remainingTurns: 2 });
                     msg += `\n✨ [${w.name}] がスキル徘徊`;
                 }
             }
@@ -854,7 +939,7 @@
                 ? `<div class="cutin-spell-embed"><div class="cutin-spell-type">◆ 呪文発動</div><div class="cutin-spell-title">${card.name}</div><div class="cutin-spell-effect">${card.effect || ''}</div></div>`
                 : '';
             const box = document.createElement('div');
-            box.className = 'cutin-box' + (playerSkillState.goldCutin ? ' gold-cutin' : '');
+            box.className = 'cutin-box' + (getPlayerSkillState(currentTurn).goldCutin ? ' gold-cutin' : '');
             if (opts.embedSpell && card.type === 'spell') {
                 const banner = card.cutin || card.name;
                 box.innerHTML = `<div class="cutin-name">${banner}</div>${spellEmbed}`;
@@ -909,7 +994,8 @@
 
         function getHurryLimit(player) {
             let base = 10 + (player === 'A' ? hurryBonusA : hurryBonusB);
-            if (player === 'A') base += playerSkillState.hurryBonus || 0;
+            if (player === 'A') base += getPlayerSkillState('A').hurryBonus || 0;
+            if (player === 'B') base += getPlayerSkillState('B').hurryBonus || 0;
             return base;
         }
 
@@ -1015,9 +1101,13 @@
             hurryBonusB = data.hurryBonusB || 0;
             smokingNextTicket = data.smokingNextTicket || 1;
             smokingCurrentCall = data.smokingCurrentCall || 1;
-            playerSkillState = data.playerSkillState || createEmptyPlayerSkillState();
-            playerTurnCount = data.playerTurnCount || 0;
-            turnsSinceLastSkillDraft = data.turnsSinceLastSkillDraft || 0;
+            playerSkillStateA = data.playerSkillStateA || data.playerSkillState || createEmptyPlayerSkillState();
+            playerSkillStateB = data.playerSkillStateB || createEmptyPlayerSkillState();
+            skillPickIndexA = data.skillPickIndexA || 0;
+            skillPickIndexB = data.skillPickIndexB || 0;
+            turnsSinceLastSkillDraftA = data.turnsSinceLastSkillDraftA ?? data.turnsSinceLastSkillDraft ?? 0;
+            turnsSinceLastSkillDraftB = data.turnsSinceLastSkillDraftB || 0;
+            confusionTurnsA = data.confusionTurnsA || 0;
             confusionTurnsB = data.confusionTurnsB || 0;
             selectionMode = null; selectedCardIndex = null; readyToPlayIndex = null;
             attackingCardIndexes = [];
@@ -1072,6 +1162,7 @@
                 updatePlayerSkillsBar();
                 updateScreen();
                 checkGameOver();
+                maybeOfferSkillPickFromRemote();
             });
         }
 
@@ -1086,7 +1177,8 @@
                 sakuraTurnsA, sakuraTurnsB, whiteboardTurnsA, whiteboardTurnsB, lanTurnsA, lanTurnsB,
                 bonusTeacherSummonsA, bonusTeacherSummonsB, hurryBonusA, hurryBonusB,
                 smokingNextTicket, smokingCurrentCall,
-                playerSkillState, playerTurnCount, turnsSinceLastSkillDraft, confusionTurnsB,
+                playerSkillStateA, playerSkillStateB, skillPickIndexA, skillPickIndexB,
+                turnsSinceLastSkillDraftA, turnsSinceLastSkillDraftB, confusionTurnsA, confusionTurnsB,
                 poolsA, poolsB, logMsg: logText, alertMsg: popupText, playerName: myName
             });
         }
@@ -1591,15 +1683,12 @@
 
         function getHandConfig(player) {
             const baseSlots = ['any', 'spell', 'weapon', 'teacher', 'teacher', 'teacher'];
-            if (player === 'A') {
-                const extra = playerSkillState.extraHandSlots || 0;
-                const slots = [...baseSlots, ...Array(extra).fill('any')];
-                return { size: 6 + extra, slotTypes: slots };
-            }
+            const extra = getPlayerSkillState(player).extraHandSlots || 0;
             if (isNagamineMode() && player === 'B') {
                 return { size: 12, slotTypes: [...baseSlots, ...baseSlots] };
             }
-            return { size: 6, slotTypes: baseSlots };
+            const slots = [...baseSlots, ...Array(extra).fill('any')];
+            return { size: 6 + extra, slotTypes: slots };
         }
 
         function getBasePlayLimit(player) {
@@ -1633,7 +1722,7 @@
 
         function getBonusTeacherSummons(player) {
             let b = player === 'A' ? bonusTeacherSummonsA : bonusTeacherSummonsB;
-            if (player === 'A') b += playerSkillState.skillBonusTeacherSummons || 0;
+            b += getPlayerSkillState(player).skillBonusTeacherSummons || 0;
             return b;
         }
         function addBonusTeacherSummon(player) { if (player === 'A') bonusTeacherSummonsA++; else bonusTeacherSummonsB++; }
@@ -1749,7 +1838,12 @@
 
         function initGame() {
             hpA = maxHp; hpB = maxHp; prevHpA = maxHp; prevHpB = maxHp; currentTurn = Math.random() < 0.5 ? 'A' : 'B';
-            playerSkillState = createEmptyPlayerSkillState(); skillPickIndex = 0; playerTurnCount = 0; turnsSinceLastSkillDraft = 0; confusionTurnsB = 0;
+            playerSkillStateA = createEmptyPlayerSkillState();
+            playerSkillStateB = createEmptyPlayerSkillState();
+            skillPickIndexA = 0; skillPickIndexB = 0;
+            turnsSinceLastSkillDraftA = 0; turnsSinceLastSkillDraftB = 0;
+            confusionTurnsA = 0; confusionTurnsB = 0;
+            skillPickOfferLock = false; skillPickResumeCallback = null;
             handA = Array(getHandConfig('A').size).fill(null); handB = Array(getHandConfig('B').size).fill(null); fieldA = []; fieldB = []; buildingStack = [];
             resetTurnActionCounters();
             attackingCardIndexes = []; philosophySpace = []; wanderSpace = []; akazuSpace = []; 
@@ -1899,15 +1993,18 @@
         }
 
         function isEnjoActive(field) {
-            if (field === fieldA && playerSkillState.doubleAttack) return true;
+            const ownerPlayer = field === fieldA ? 'A' : 'B';
+            if (getPlayerSkillState(ownerPlayer).doubleAttack) return true;
             return field.some(c => c.id === 25 && !c.inLab && c.kenonTurns === 0);
         }
 
         function getEffectiveDfn(teacher, ownerField) {
             if (!teacher || teacher.type !== 'teacher') return teacher ? teacher.dfn : 0;
             let dfn = teacher.dfn;
-            if (ownerField === fieldA && playerSkillState.allyDfnPct > 0) {
-                dfn = Math.floor(dfn * (1 + playerSkillState.allyDfnPct / 100));
+            const ownerPlayer = ownerField === fieldA ? 'A' : 'B';
+            const ps = getPlayerSkillState(ownerPlayer);
+            if (ps.allyDfnPct > 0) {
+                dfn = Math.floor(dfn * (1 + ps.allyDfnPct / 100));
             }
             return isEnjoActive(ownerField) ? Math.floor(dfn / 2) : dfn;
         }
@@ -1934,19 +2031,16 @@
 
         function dealPlayerHpDamage(player, rawDmg, logRef) {
             if (rawDmg <= 0) return 0;
-            if (player === 'A') {
-                const finalDmg = applySkillDamageToPlayerA(rawDmg);
-                if (finalDmg < 0) { if (logRef) logRef.msg += '\n✨ スキルで攻撃無効化！'; return 0; }
-                hpA -= finalDmg;
-                return finalDmg;
-            }
-            hpB -= rawDmg;
-            return rawDmg;
+            const finalDmg = applySkillDamageToPlayer(player, rawDmg);
+            if (finalDmg < 0) { if (logRef) logRef.msg += '\n✨ スキルで攻撃無効化！'; return 0; }
+            if (player === 'A') hpA -= finalDmg; else hpB -= finalDmg;
+            return finalDmg;
         }
 
         function applySkillDrainHeal(dmgDealt) {
-            if (currentTurn === 'A' && playerSkillState.drainHeal && dmgDealt > 0) {
-                hpA += dmgDealt;
+            const ps = getPlayerSkillState(currentTurn);
+            if (ps.drainHeal && dmgDealt > 0) {
+                if (currentTurn === 'A') hpA += dmgDealt; else hpB += dmgDealt;
                 return `\n✨ ドレインで ${dmgDealt} 回復`;
             }
             return '';
@@ -1966,9 +2060,9 @@
 
         function isHandCardPlayable(card, idx) {
             if (!card || !isMyTurn()) return false;
-            const myHand = handA;
-            const myField = fieldA;
-            const enemyField = fieldB;
+            const myHand = myHandRef();
+            const myField = myFieldRef();
+            const enemyField = enemyFieldRef();
             if (selectionMode === 'clean') return card.id !== 502;
             if (selectionMode === 'present') return true;
             if (selectionMode === 'baiten') return card.type === 'teacher' && card.id !== 501 && card.id !== 502;
@@ -2888,7 +2982,7 @@
                         card.canAttack = false; currentField.push(card); currentHand[cardIndex] = null; markTeacherSummonedThisTurn(); readyToPlayIndex = null;
                     }
                     if (isAiMode && currentTurn === 'B' && card.type === 'teacher' && fieldB.includes(card)) applyAiTeacherDifficultyBonus(card);
-                    if (currentTurn === 'A' && card.type === 'teacher' && fieldA.includes(card)) applyPlayerSkillOnTeacherEnter(card);
+                    if (card.type === 'teacher') applyPlayerSkillOnTeacherEnter(card, currentTurn);
                     addLog(logMsg); syncState(logMsg); updateScreen(); checkGameOver();
                 };
                 const runTeacherAbilityEffects = () => {
@@ -3130,7 +3224,7 @@
                     logMsg += `\n🚬 喫煙所の順番待ちに登録されました（整理券: ${card.smokeTicket}番）`;
                 }
                 if (isAiMode && currentTurn === 'B' && card.type === 'teacher' && fieldB.includes(card)) applyAiTeacherDifficultyBonus(card);
-                if (currentTurn === 'A' && card.type === 'teacher' && fieldA.includes(card)) applyPlayerSkillOnTeacherEnter(card);
+                if (card.type === 'teacher') applyPlayerSkillOnTeacherEnter(card, currentTurn);
                 addLog(logMsg); syncState(logMsg); updateScreen(); checkGameOver();
                 return;
             }
@@ -3716,7 +3810,7 @@
             });
 
             endTurnMsg += triggerMitaniEffects();
-            endTurnMsg += applySkillWanderAtTurnEnd();
+            endTurnMsg += applySkillWanderAtTurnEnd(currentTurn);
             endTurnMsg += processCharmedReturns();
 
             enemyField.forEach(card => { if(card.type === 'teacher') card.canAttack = (card.hanseibunTurns === 0 && card.videoTurns === 0 && card.sleepTurns === 0 && card.pechankoTurns === 0 && !card.isPetrified && !card.inLab && card.kenonTurns === 0 && !card.isSmoking && card.smokeTicket === 0); });
@@ -3726,11 +3820,8 @@
             bonusTeacherSummonsA = 0; bonusTeacherSummonsB = 0;
             attackingCardIndexes = []; drawHand(currentTurn);
 
-            if (currentTurn === 'A') {
-                playerTurnCount++;
-                turnsSinceLastSkillDraft++;
-                endTurnMsg += applySkillTurnStartForPlayer();
-            }
+            bumpTurnsSinceSkillDraft(currentTurn);
+            endTurnMsg += applySkillTurnStartForPlayer(currentTurn);
 
             if (currentTurn === 'B' && isNagamineMode()) {
                 endTurnMsg += applyNagamineInstantKill();
@@ -3788,10 +3879,24 @@
             
             addLog(endTurnMsg); syncState(endTurnMsg); updateScreen(); checkGameOver();
             const needSkillPick = shouldOfferSkillPickOnTurnStart();
-            if (needSkillPick) {
+            if (needSkillPick && isMyTurn()) {
                 beginSkillPickPhase(() => { syncState(); });
-                return;
             }
+        }
+
+        function resetOnlineLobby() {
+            const joinBtn = document.getElementById('join-btn');
+            if (joinBtn) {
+                joinBtn.innerText = '部屋に入る（ゲスト）';
+                joinBtn.disabled = false;
+            }
+            document.getElementById('skill-pick-overlay')?.classList.remove('active');
+            skillPickResumeCallback = null;
+            skillPickOfferLock = false;
+            try { if (peer) peer.destroy(); } catch (e) {}
+            peer = null;
+            conn = null;
+            amIHost = true;
         }
 
         function checkGameOver() {
@@ -3809,7 +3914,7 @@
                     document.getElementById('win-enemy').innerText = enemyWins;
                     document.getElementById('game-screen').style.display = 'none';
                     document.getElementById('setup-screen').style.display = 'block';
-                    if (peer) { peer.destroy(); peer = null; conn = null; }
+                    resetOnlineLobby();
                 }, 1000);
             }
         }
