@@ -121,14 +121,14 @@
 </head>
 <body>
     <div id="setup-screen">
-        <h1>先生カードゲーム <span class="version-badge">安定版 Ver 3.16</span></h1>
+        <h1>先生カードゲーム <span class="version-badge">安定版 Ver 3.17</span></h1>
         <div class="patch-notes">
-            <strong>📋 変更履歴（Ver 3.16）</strong><br>
-            ・📜 召喚同時呪文（大福帳・読書感想等）のカットインを1回に統一<br>
-            ・🏪 売店：先生売却→同レア度ティーチャー5枚から購入<br>
-            ・✨ 新カード：サクラエディタ（魅了）・教室の机/椅子<br>
-            ・🗡️ 武器装備時にカード被さり演出・状態異常1行表示<br>
-            ・🎚️ <b>Ver 3.15</b>：Cygein修正・AI装備ロジック・呪文カットイン整理
+            <strong>📋 変更履歴（Ver 3.17）</strong><br>
+            ・🎯 味方選択時も武器説明リンクを無効化<br>
+            ・📜 呪文＋赤迫反射時の二重カットイン解消（7セグメントLED等）<br>
+            ・🗡️ 武器装備：カットイン後に被さり演出＋効果を同時開始<br>
+            ・⚔️ 同時攻撃時は全攻撃者が突進アニメーション<br>
+            ・🎚️ <b>Ver 3.16</b>：売店刷新・魅了・召喚呪文カットイン統一
         </div>
 
         <div class="win-counter">🏆 現在の戦績: あなた <span id="win-player" style="color:#007bff">0</span> - <span id="win-ai" style="color:#dc3545">0</span> AI</div>
@@ -1340,23 +1340,23 @@
             const tRect = teacherEl.getBoundingClientRect();
             const overlay = document.createElement('div');
             overlay.className = 'weapon-equip-anim-card';
-            overlay.style.left = (tRect.left + tRect.width * 0.5 - 55) + 'px';
-            overlay.style.top = (tRect.top - 70) + 'px';
+            overlay.style.left = tRect.left + 'px';
+            overlay.style.top = (tRect.top - 50) + 'px';
             overlay.style.width = tRect.width + 'px';
             overlay.style.height = tRect.height + 'px';
             overlay.style.opacity = '0';
-            overlay.style.transform = 'scale(0.6) translateY(-20px)';
+            overlay.style.transform = 'scale(0.55) translateY(-24px)';
             overlay.innerHTML = `<div style="font-size:8px;color:#28a745;">⚔️武器</div><div style="font-size:10px;margin:2px 0;">${weaponCard.name}</div><div style="font-size:7px;color:#333;">${weaponCard.effect || ''}</div>`;
             document.body.appendChild(overlay);
             requestAnimationFrame(() => {
-                overlay.style.opacity = '1';
-                overlay.style.transform = `translate(${(tRect.width * 0.5) - (tRect.width * 0.5)}px, 70px) scale(1.05)`;
+                overlay.style.opacity = '0.92';
+                overlay.style.transform = 'translate(0, 50px) scale(1.02)';
             });
             setTimeout(() => {
                 overlay.style.opacity = '0';
-                overlay.style.transform = `translate(0, 90px) scale(0.92)`;
-                setTimeout(() => { overlay.remove(); if (onComplete) onComplete(); }, 280);
-            }, 420);
+                overlay.style.transform = 'translate(0, 58px) scale(0.95)';
+                setTimeout(() => { overlay.remove(); if (onComplete) onComplete(); }, 300);
+            }, 480);
         }
 
         class BagPool {
@@ -2773,6 +2773,21 @@
             return cardEl;
         }
 
+        function shouldBlockWeaponDetailOnFieldCard(isMine) {
+            if (selectionMode === 'weapon' || selectionMode === 'spell_107' || selectionMode === 'spell_115' || selectionMode === 'lab' || selectionMode === 'teacher_27') return true;
+            if (!isMine && (selectionMode === 'spell_119' || selectionMode === 'spell_129')) return true;
+            if (!isMine && attackingCardIndexes.length > 0 && !selectionMode) return true;
+            return false;
+        }
+
+        function runAkasakoReflectAfterSpell(aOwner, aIdx, runSpellEffects) {
+            enqueuePresentation([
+                { type: 'highlight', player: aOwner, index: aIdx },
+                { type: 'action', fn: runSpellEffects || (() => {}) },
+                { type: 'clearHighlight' }
+            ]);
+        }
+
         function handleCenterFieldClick() {
             if (buildingStack.length === 0) return;
             let top = buildingStack[buildingStack.length - 1];
@@ -2796,10 +2811,7 @@
         function createFieldCardElement(card, player, index) {
             const ownerField = player === 'A' ? fieldA : fieldB;
             const isMine = player === 'A';
-            const blockWeaponLink = !isMine && (
-                selectionMode === 'spell_119' || selectionMode === 'spell_129' ||
-                (attackingCardIndexes.length > 0 && !selectionMode)
-            );
+            const blockWeaponLink = shouldBlockWeaponDetailOnFieldCard(isMine);
             const cardEl = createCardElement(card, ownerField, player, false, blockWeaponLink);
             cardEl.style.background = isMine ? (card.type==='building'?'#fff3cd':'#cce5ff') : (card.type==='building'?'#ffeeba':'#f8d7da'); 
             cardEl.style.borderColor = isMine ? (card.type==='building'?'#d39e00':'#004085') : (card.type==='building'?'#d39e00':'#721c24');
@@ -2910,6 +2922,17 @@
             overlay.innerHTML = `<div class="weapon-detail-card"><div class="wd-type">⚔️ 武器カード</div><div class="wd-title">${base.name}</div><div class="wd-effect">${base.effect || ''}</div><div class="wd-close">タップで閉じる</div></div>`;
             overlay.onclick = () => overlay.remove();
             document.body.appendChild(overlay);
+        }
+
+        function animateMultiCardAttack(attackerElIds, targetElId, onComplete) {
+            const targetEl = document.getElementById(targetElId);
+            const validIds = attackerElIds.filter(id => document.getElementById(id));
+            if (!targetEl || !validIds.length) { if (onComplete) onComplete(); return; }
+            let remaining = validIds.length;
+            const onOneDone = () => { if (--remaining <= 0 && onComplete) onComplete(); };
+            validIds.forEach((id, i) => {
+                setTimeout(() => animateCardAttack(id, targetElId, onOneDone), i * 90);
+            });
         }
 
         function animateCardAttack(attackerElId, targetElId, onComplete) {
@@ -3252,7 +3275,7 @@
                     let isGlobalSpell = [109, 110, 113, 117, 118, 120].includes(card.id);
                     if (isGlobalSpell) { logMsg += `\n相手の[赤迫]の「はいあうとー」発動！全体呪文が跳ね返され、味方に2倍になって降りかかる！`; spellReflected = true; }
                     else { logMsg += `\n相手の[赤迫]の「はいあうとー」発動！呪文が跳ね返ってきた！`; targetField = currentField; }
-                    sendTeacherAbilityCutin(cardById(15), aOwner, aIdx, runSpellEffects);
+                    runAkasakoReflectAfterSpell(aOwner, aIdx, runSpellEffects);
                 } else {
                     if (akasako) notifySidwellBlock(currentTurn === 'A' ? 'B' : 'A', akasako);
                     runSpellEffects();
@@ -3613,8 +3636,9 @@
                 readyToPlayIndex = null;
                 addLog(logMsg); updateScreen(); checkGameOver();
                 };
-                animateWeaponEquipToTeacher(teacherElId, weaponCard, () => {
-                    sendInstantCardCutin(weaponCard, applyWeaponStats);
+                sendCardCutin(weaponCard, () => {
+                    animateWeaponEquipToTeacher(teacherElId, weaponCard);
+                    applyWeaponStats();
                 });
             } else if (selectionMode === 'spell_107' && targetMode === 'self') {
                 const spellIdx = selectedCardIndex;
@@ -3926,9 +3950,9 @@
 
             const animTargetPlayer = (targetMode === 'enemy') ? (currentTurn === 'A' ? 'B' : 'A') : currentTurn;
             let animTargetId = targetMode === 'building' ? 'center-building' : `field-card-${animTargetPlayer}-${targetCardIndex}`;
-            const animAttackerId = `field-card-${currentTurn}-${myCardIndexes[0]}`;
-            if (document.getElementById(animAttackerId) && document.getElementById(animTargetId)) {
-                animateCardAttack(animAttackerId, animTargetId, runFightBody);
+            const animAttackerIds = myCardIndexes.map(idx => `field-card-${currentTurn}-${idx}`);
+            if (animAttackerIds.some(id => document.getElementById(id)) && document.getElementById(animTargetId)) {
+                animateMultiCardAttack(animAttackerIds, animTargetId, runFightBody);
             } else {
                 runFightBody();
             }
@@ -4009,12 +4033,12 @@
             consumeAttackerTurns(attackers); addLog(logMsg); updateScreen(); checkGameOver();
             };
 
-            const animAttackerId = `field-card-${currentTurn}-${myCardIndexes[0]}`;
+            const animAttackerIds = myCardIndexes.map(idx => `field-card-${currentTurn}-${idx}`);
             const animTargetId = kakujiIndex !== -1
                 ? `field-card-${targetPlayerStr}-${kakujiIndex}`
                 : (targetPlayerStr === 'A' ? 'hp-box-self' : 'hp-box-enemy');
-            if (document.getElementById(animAttackerId) && document.getElementById(animTargetId)) {
-                animateCardAttack(animAttackerId, animTargetId, runDirectAttack);
+            if (animAttackerIds.some(id => document.getElementById(id)) && document.getElementById(animTargetId)) {
+                animateMultiCardAttack(animAttackerIds, animTargetId, runDirectAttack);
             } else {
                 runDirectAttack();
             }
